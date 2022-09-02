@@ -79,6 +79,9 @@ static const int SAVE_GAME_LAST_CARAVANSERAI_WRONG_OFFSET = 0x87;
 
 static char compress_buffer[COMPRESS_BUFFER_SIZE];
 
+static uint8_t save_buffer_data[COMPRESS_BUFFER_SIZE];
+static buffer save_buffer;
+
 typedef struct {
     buffer buf;
     int compressed;
@@ -806,15 +809,6 @@ static int read_int32(FILE *fp)
     return buffer_read_i32(&buf);
 }
 
-static void write_int32(FILE *fp, int value)
-{
-    uint8_t data[4];
-    buffer buf;
-    buffer_init(&buf, data, 4);
-    buffer_write_i32(&buf, value);
-    fwrite(&data, 1, 4, fp);
-}
-
 static int read_compressed_chunk(FILE *fp, void *buffer, int bytes_to_read)
 {
     if (bytes_to_read > COMPRESS_BUFFER_SIZE) {
@@ -827,100 +821,11 @@ static int read_compressed_chunk(FILE *fp, void *buffer, int bytes_to_read)
         }
     } else {
         if (fread(compress_buffer, 1, input_size, fp) != input_size
-            || zlib_decompress(compress_buffer, input_size, buffer, &bytes_to_read) != Z_OK) {
+            || !zip_decompress(compress_buffer, input_size, buffer, &bytes_to_read)) {
             return 0;
         }
     }
     return 1;
-}
-
-int zlib_decompress(const void* input_buffer, int input_length, void* output_buffer, int* output_length)
-{
-    int ret;
-    z_stream strm;
-
-    /* allocate inflate state */
-    strm.zalloc = Z_NULL;
-    strm.zfree = Z_NULL;
-    strm.opaque = Z_NULL;
-    strm.avail_in = 0;
-    strm.next_in = Z_NULL;
-    ret = inflateInit(&strm);
-    if (ret != Z_OK)
-        return ret;
-
-    /* decompress until deflate stream ends or end of file */
-    strm.avail_in = input_length;
-    strm.next_in = input_buffer;
-
-    /* run inflate() on input until output buffer not full */
-    strm.avail_out = *output_length;
-    strm.next_out = output_buffer;
-    ret = inflate(&strm, Z_NO_FLUSH);
-    assert(ret != Z_STREAM_ERROR);  /* state not clobbered */
-    switch (ret) {
-        case Z_NEED_DICT:
-            ret = Z_DATA_ERROR;     /* and fall through */
-        case Z_DATA_ERROR:
-        case Z_MEM_ERROR:
-            (void)inflateEnd(&strm);
-            return ret;
-    }
-    assert(strm.avail_out == 0);
-    /* clean up and return */
-    (void)inflateEnd(&strm);
-    return ret == Z_STREAM_END ? Z_OK : Z_DATA_ERROR;
-}
-
-static int write_compressed_chunk(FILE *fp, const void *buffer, int bytes_to_write)
-{
-    if (bytes_to_write > COMPRESS_BUFFER_SIZE) {
-        return 0;
-    }
-    int output_size = COMPRESS_BUFFER_SIZE;
-    if (zlib_compress(buffer, bytes_to_write, compress_buffer, &output_size) == Z_OK) {
-        write_int32(fp, output_size);
-        fwrite(compress_buffer, 1, output_size, fp);
-    } else {
-        // unable to compress: write uncompressed
-        write_int32(fp, UNCOMPRESSED);
-        fwrite(buffer, 1, bytes_to_write, fp);
-    }
-    return 1;
-}
-
-int zlib_compress(const void* input_buffer, int input_length, void* output_buffer, int* output_length)
-{
-    int ret, flush;
-    unsigned have;
-    z_stream strm;
-
-    /* allocate deflate state */
-    strm.zalloc = Z_NULL;
-    strm.zfree = Z_NULL;
-    strm.opaque = Z_NULL;
-    ret = deflateInit(&strm, Z_DEFAULT_COMPRESSION);
-    if (ret != Z_OK)
-        return ret;
-
-    /* compress until end of file */
-    strm.avail_in = input_length;
-    flush = Z_FINISH;
-    strm.next_in = input_buffer;
-    strm.avail_out = COMPRESS_BUFFER_SIZE;
-    strm.next_out = output_buffer;
-    ret = deflate(&strm, flush);    /* no bad return value */
-    assert(ret != Z_STREAM_ERROR);  /* state not clobbered */
-    have = COMPRESS_BUFFER_SIZE - strm.avail_out;
-    assert(strm.avail_in == 0);     /* all input will be used */
-
-    assert(ret == Z_STREAM_END);        /* stream will be complete */
-
-    *output_length = have;
-
-    /* clean up and return */
-    (void)deflateEnd(&strm);
-    return Z_OK;
 }
 
 static int prepare_dynamic_piece(FILE *fp, file_piece *piece)
@@ -960,21 +865,43 @@ static int savegame_read_from_file(FILE *fp)
     return 1;
 }
 
-static void savegame_write_to_file(FILE *fp)
+//static int savegame_read_from_buffer()
+//{
+//    buffer_init(&save_buffer, &save_buffer_data, COMPRESS_BUFFER_SIZE);
+//    for (int i = 0; i < savegame_data.num_pieces; i++) {
+//        file_piece *piece = &savegame_data.pieces[i];
+//        int result = 1;
+//        if (!prepare_dynamic_piece(piece)) {
+//            continue;
+//        }
+//        /*if (piece->compressed) {
+//            result = read_compressed_chunk(fp, piece->buf.data, piece->buf.size);
+//        } else {
+//            result = fread(piece->buf.data, 1, piece->buf.size, fp) == piece->buf.size;
+//        }*/
+//        buffer_copy(&piece->buf, &save_buffer, piece->buf.size);
+//        // The last piece may be smaller than buf.size
+//        if (!result && i != (savegame_data.num_pieces - 1)) {
+//            log_info("Incorrect buffer size, got", 0, result);
+//            log_info("Incorrect buffer size, expected", 0, piece->buf.size);
+//            return 0;
+//        }
+//    }
+//    return 1;
+//}
+
+static void savegame_write_to_buffer()
 {
+    buffer_init(&save_buffer, &save_buffer_data, COMPRESS_BUFFER_SIZE);
     for (int i = 0; i < savegame_data.num_pieces; i++) {
         file_piece *piece = &savegame_data.pieces[i];
         if (piece->dynamic) {
-            write_int32(fp, piece->buf.size);
+            buffer_write_i32(&save_buffer, piece->buf.size);
             if (!piece->buf.size) {
                 continue;
             }
         }
-        if (piece->compressed) {
-            write_compressed_chunk(fp, piece->buf.data, piece->buf.size);
-        } else {
-            fwrite(piece->buf.data, 1, piece->buf.size, fp);
-        }
+        buffer_write_raw(&save_buffer, piece->buf.data, piece->buf.size);
     }
 }
 
@@ -1270,13 +1197,20 @@ int game_file_io_write_saved_game(const char *filename)
     log_info("Saving game", filename, 0);
     clock_t start = clock();
     savegame_save_to_state(&savegame_data.state);
+    savegame_write_to_buffer();
+    int compressed_size = 0;
+    int zresult = zlib_compress(save_buffer.data, save_buffer.index, compress_buffer, COMPRESS_BUFFER_SIZE, &compressed_size);
+    if (zresult != Z_OK) {
+        log_error("Unable to save game", 0, 0);
+        return 0;
+    }
 
     FILE *fp = file_open(filename, "wb");
     if (!fp) {
         log_error("Unable to save game", 0, 0);
         return 0;
     }
-    savegame_write_to_file(fp);
+    fwrite(compress_buffer, 1, compressed_size, fp);
     file_close(fp);
     clock_t difference = clock() - start;
     int msec = difference * 1000 / CLOCKS_PER_SEC;
@@ -1292,4 +1226,75 @@ int game_file_io_delete_saved_game(const char *filename)
         log_error("Unable to delete game", 0, 0);
     }
     return result;
+}
+
+int zlib_decompress(const void* input_buffer, int input_length, void* output_buffer, int* output_length)
+{
+    int ret;
+    z_stream strm;
+
+    /* allocate inflate state */
+    strm.zalloc = Z_NULL;
+    strm.zfree = Z_NULL;
+    strm.opaque = Z_NULL;
+    strm.avail_in = 0;
+    strm.next_in = Z_NULL;
+    ret = inflateInit(&strm);
+    if (ret != Z_OK)
+        return ret;
+
+    /* decompress until deflate stream ends or end of file */
+    strm.avail_in = input_length;
+    strm.next_in = input_buffer;
+
+    /* run inflate() on input until output buffer not full */
+    strm.avail_out = *output_length;
+    strm.next_out = output_buffer;
+    ret = inflate(&strm, Z_NO_FLUSH);
+    assert(ret != Z_STREAM_ERROR);  /* state not clobbered */
+    switch (ret) {
+    case Z_NEED_DICT:
+        ret = Z_DATA_ERROR;     /* and fall through */
+    case Z_DATA_ERROR:
+    case Z_MEM_ERROR:
+        (void)inflateEnd(&strm);
+        return ret;
+    }
+    assert(strm.avail_out == 0);
+    /* clean up and return */
+    (void)inflateEnd(&strm);
+    return ret == Z_STREAM_END ? Z_OK : Z_DATA_ERROR;
+}
+
+int zlib_compress(const void* input_buffer, int input_length, void* output_buffer, int output_buffer_length, int *output_length)
+{
+    int ret, flush;
+    unsigned have;
+    z_stream strm;
+
+    /* allocate deflate state */
+    strm.zalloc = Z_NULL;
+    strm.zfree = Z_NULL;
+    strm.opaque = Z_NULL;
+    ret = deflateInit(&strm, Z_DEFAULT_COMPRESSION);
+    if (ret != Z_OK)
+        return ret;
+
+    /* compress until end of file */
+    strm.avail_in = input_length;
+    flush = Z_FINISH;
+    strm.next_in = input_buffer;
+    strm.avail_out = output_buffer_length;
+    strm.next_out = output_buffer;
+    ret = deflate(&strm, flush);    /* no bad return value */
+    assert(ret != Z_STREAM_ERROR);  /* state not clobbered */
+    have = output_buffer_length - strm.avail_out;
+    assert(strm.avail_in == 0);     /* all input will be used */
+    *output_length = have;
+
+    assert(ret == Z_STREAM_END);        /* stream will be complete */
+
+    /* clean up and return */
+    (void)deflateEnd(&strm);
+    return Z_OK;
 }

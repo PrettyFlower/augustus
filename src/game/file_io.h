@@ -39,4 +39,8 @@ int game_file_io_write_saved_game(const char *filename);
 
 int game_file_io_delete_saved_game(const char *filename);
 
+int zlib_decompress(const void* input_buffer, int input_length, void* output_buffer, int* output_length);
+
+int zlib_compress(const void* input_buffer, int input_length, void* output_buffer, int output_buffer_length, int* output_length);
+
 #endif // GAME_FILE_IO_H
