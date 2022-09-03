@@ -48,13 +48,12 @@
 #include "scenario/scenario.h"
 #include "sound/city.h"
 #include "widget/minimap.h"
+
 #include "zlib.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <assert.h>
-#include <time.h>
 
 #define COMPRESS_BUFFER_SIZE 3000000
 #define UNCOMPRESSED 0x80000000
@@ -821,37 +820,26 @@ static int zlib_decompress(const void *input_buffer, int input_length, void *out
     int ret;
     z_stream strm;
 
-    /* allocate inflate state */
     strm.zalloc = Z_NULL;
     strm.zfree = Z_NULL;
     strm.opaque = Z_NULL;
     strm.avail_in = 0;
     strm.next_in = Z_NULL;
     ret = inflateInit(&strm);
-    if (ret != Z_OK)
-        return ret;
+    if (ret != Z_OK) {
+        return 0;
+    }
 
-    /* decompress until deflate stream ends or end of file */
     strm.avail_in = input_length;
     strm.next_in = input_buffer;
-
-    /* run inflate() on input until output buffer not full */
     strm.avail_out = output_length;
     strm.next_out = output_buffer;
     ret = inflate(&strm, Z_NO_FLUSH);
-    assert(ret != Z_STREAM_ERROR);  /* state not clobbered */
-    switch (ret) {
-        case Z_NEED_DICT:
-            ret = Z_DATA_ERROR;     /* and fall through */
-        case Z_DATA_ERROR:
-        case Z_MEM_ERROR:
-            (void)inflateEnd(&strm);
-            return ret;
+    inflateEnd(&strm);
+    if (ret != Z_STREAM_END || strm.avail_out != 0) {
+        return 0;
     }
-    assert(strm.avail_out == 0);
-    /* clean up and return */
-    (void)inflateEnd(&strm);
-    return ret == Z_STREAM_END ? Z_OK : Z_DATA_ERROR;
+    return 1;
 }
 
 static int read_compressed_chunk(FILE *fp, void *buffer, int bytes_to_read, int version)
@@ -860,28 +848,19 @@ static int read_compressed_chunk(FILE *fp, void *buffer, int bytes_to_read, int 
         return 0;
     }
     int input_size = read_int32(fp);
-    size_t compressed_size;
-    int decompressed;
-    if ((unsigned int) input_size == UNCOMPRESSED) {
-        compressed_size = fread(buffer, 1, bytes_to_read, fp);
-        if (compressed_size != bytes_to_read) {
-            return 0;
-        }
+    if ((unsigned int) input_size == UNCOMPRESSED && fread(buffer, 1, bytes_to_read, fp) != bytes_to_read) {
+        return 0;
     } else {
-        compressed_size = fread(compress_buffer, 1, input_size, fp);
-        if (compressed_size != input_size) {
+        if (fread(compress_buffer, 1, input_size, fp) != input_size) {
             return 0;
         }
 
         if (version <= SAVE_GAME_LAST_ZIP_COMPRESSION) {
-            decompressed = zip_decompress(compress_buffer, input_size, buffer, &bytes_to_read);
-            if (!decompressed) {
+            if (!zip_decompress(compress_buffer, input_size, buffer, &bytes_to_read)) {
                 return 0;
             }
-        }
-        else {
-            decompressed = zlib_decompress(compress_buffer, input_size, buffer, bytes_to_read);
-            if (decompressed != Z_OK) {
+        } else {
+            if (!zlib_decompress(compress_buffer, input_size, buffer, bytes_to_read)) {
                 return 0;
             }
         }
@@ -891,36 +870,31 @@ static int read_compressed_chunk(FILE *fp, void *buffer, int bytes_to_read, int 
 
 static int zlib_compress(const void *input_buffer, int input_length, void *output_buffer, int *output_length)
 {
-    int ret, flush;
+    int ret;
     unsigned have;
     z_stream strm;
 
-    /* allocate deflate state */
     strm.zalloc = Z_NULL;
     strm.zfree = Z_NULL;
     strm.opaque = Z_NULL;
     ret = deflateInit(&strm, Z_BEST_SPEED);
-    if (ret != Z_OK)
-        return ret;
+    if (ret != Z_OK) {
+        return 0;
+    }
 
-    /* compress until end of file */
     strm.avail_in = input_length;
-    flush = Z_FINISH;
     strm.next_in = input_buffer;
     strm.avail_out = COMPRESS_BUFFER_SIZE;
     strm.next_out = output_buffer;
-    ret = deflate(&strm, flush);    /* no bad return value */
-    assert(ret != Z_STREAM_ERROR);  /* state not clobbered */
+    ret = deflate(&strm, Z_FINISH);
+    deflateEnd(&strm);
+    if (ret != Z_STREAM_END || strm.avail_in != 0) {
+        return 0;
+    }
+
     have = COMPRESS_BUFFER_SIZE - strm.avail_out;
-    assert(strm.avail_in == 0);     /* all input will be used */
-
-    assert(ret == Z_STREAM_END);        /* stream will be complete */
-
     *output_length = have;
-
-    /* clean up and return */
-    (void)deflateEnd(&strm);
-    return Z_OK;
+    return 1;
 }
 
 static int write_compressed_chunk(FILE *fp, const void *buffer, int bytes_to_write)
@@ -929,7 +903,7 @@ static int write_compressed_chunk(FILE *fp, const void *buffer, int bytes_to_wri
         return 0;
     }
     int output_size = COMPRESS_BUFFER_SIZE;
-    if (zlib_compress(buffer, bytes_to_write, compress_buffer, &output_size) == Z_OK) {
+    if (zlib_compress(buffer, bytes_to_write, compress_buffer, &output_size)) {
         write_int32(fp, output_size);
         fwrite(compress_buffer, 1, output_size, fp);
     } else {
@@ -1285,7 +1259,6 @@ int game_file_io_write_saved_game(const char *filename)
     init_savegame_data(SAVE_GAME_CURRENT_VERSION);
 
     log_info("Saving game", filename, 0);
-    clock_t start = clock();
     savegame_save_to_state(&savegame_data.state);
 
     FILE *fp = file_open(filename, "wb");
@@ -1295,9 +1268,6 @@ int game_file_io_write_saved_game(const char *filename)
     }
     savegame_write_to_file(fp);
     file_close(fp);
-    clock_t difference = clock() - start;
-    int msec = difference * 1000 / CLOCKS_PER_SEC;
-    log_info("Finished saving game in", "", msec);
     return 1;
 }
 
