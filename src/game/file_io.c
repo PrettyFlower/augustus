@@ -61,7 +61,7 @@
 
 #define PIECE_SIZE_DYNAMIC 0
 
-static const int SAVE_GAME_CURRENT_VERSION = 0x88;
+static const int SAVE_GAME_CURRENT_VERSION = 0x89;
 
 static const int SAVE_GAME_LAST_ORIGINAL_LIMITS_VERSION = 0x66;
 static const int SAVE_GAME_LAST_SMALLER_IMAGE_ID_VERSION = 0x76;
@@ -76,6 +76,7 @@ static const int SAVE_GAME_INCREASE_GRANARY_CAPACITY = 0x85;
 // static const int SAVE_GAME_ROADBLOCK_DATA_MOVED_FROM_SUBTYPE = 0x86; This define is unneeded for now
 static const int SAVE_GAME_LAST_ORIGINAL_TERRAIN_DATA_SIZE_VERSION = 0x86;
 static const int SAVE_GAME_LAST_CARAVANSERAI_WRONG_OFFSET = 0x87;
+static const int SAVE_GAME_LAST_ZIP_COMPRESSION = 0x88;
 
 static char compress_buffer[COMPRESS_BUFFER_SIZE];
 
@@ -815,26 +816,7 @@ static void write_int32(FILE *fp, int value)
     fwrite(&data, 1, 4, fp);
 }
 
-static int read_compressed_chunk(FILE *fp, void *buffer, int bytes_to_read)
-{
-    if (bytes_to_read > COMPRESS_BUFFER_SIZE) {
-        return 0;
-    }
-    int input_size = read_int32(fp);
-    if ((unsigned int) input_size == UNCOMPRESSED) {
-        if (fread(buffer, 1, bytes_to_read, fp) != bytes_to_read) {
-            return 0;
-        }
-    } else {
-        if (fread(compress_buffer, 1, input_size, fp) != input_size
-            || zlib_decompress(compress_buffer, input_size, buffer, &bytes_to_read) != Z_OK) {
-            return 0;
-        }
-    }
-    return 1;
-}
-
-int zlib_decompress(const void* input_buffer, int input_length, void* output_buffer, int* output_length)
+static int zlib_decompress(const void *input_buffer, int input_length, void *output_buffer, int output_length)
 {
     int ret;
     z_stream strm;
@@ -854,7 +836,7 @@ int zlib_decompress(const void* input_buffer, int input_length, void* output_buf
     strm.next_in = input_buffer;
 
     /* run inflate() on input until output buffer not full */
-    strm.avail_out = *output_length;
+    strm.avail_out = output_length;
     strm.next_out = output_buffer;
     ret = inflate(&strm, Z_NO_FLUSH);
     assert(ret != Z_STREAM_ERROR);  /* state not clobbered */
@@ -872,24 +854,42 @@ int zlib_decompress(const void* input_buffer, int input_length, void* output_buf
     return ret == Z_STREAM_END ? Z_OK : Z_DATA_ERROR;
 }
 
-static int write_compressed_chunk(FILE *fp, const void *buffer, int bytes_to_write)
+static int read_compressed_chunk(FILE *fp, void *buffer, int bytes_to_read, int version)
 {
-    if (bytes_to_write > COMPRESS_BUFFER_SIZE) {
+    if (bytes_to_read > COMPRESS_BUFFER_SIZE) {
         return 0;
     }
-    int output_size = COMPRESS_BUFFER_SIZE;
-    if (zlib_compress(buffer, bytes_to_write, compress_buffer, &output_size) == Z_OK) {
-        write_int32(fp, output_size);
-        fwrite(compress_buffer, 1, output_size, fp);
+    int input_size = read_int32(fp);
+    size_t compressed_size;
+    int decompressed;
+    if ((unsigned int) input_size == UNCOMPRESSED) {
+        compressed_size = fread(buffer, 1, bytes_to_read, fp);
+        if (compressed_size != bytes_to_read) {
+            return 0;
+        }
     } else {
-        // unable to compress: write uncompressed
-        write_int32(fp, UNCOMPRESSED);
-        fwrite(buffer, 1, bytes_to_write, fp);
+        compressed_size = fread(compress_buffer, 1, input_size, fp);
+        if (compressed_size != input_size) {
+            return 0;
+        }
+
+        if (version <= SAVE_GAME_LAST_ZIP_COMPRESSION) {
+            decompressed = zip_decompress(compress_buffer, input_size, buffer, &bytes_to_read);
+            if (!decompressed) {
+                return 0;
+            }
+        }
+        else {
+            decompressed = zlib_decompress(compress_buffer, input_size, buffer, bytes_to_read);
+            if (decompressed != Z_OK) {
+                return 0;
+            }
+        }
     }
     return 1;
 }
 
-int zlib_compress(const void* input_buffer, int input_length, void* output_buffer, int* output_length)
+static int zlib_compress(const void *input_buffer, int input_length, void *output_buffer, int *output_length)
 {
     int ret, flush;
     unsigned have;
@@ -899,7 +899,7 @@ int zlib_compress(const void* input_buffer, int input_length, void* output_buffe
     strm.zalloc = Z_NULL;
     strm.zfree = Z_NULL;
     strm.opaque = Z_NULL;
-    ret = deflateInit(&strm, Z_DEFAULT_COMPRESSION);
+    ret = deflateInit(&strm, Z_BEST_SPEED);
     if (ret != Z_OK)
         return ret;
 
@@ -923,6 +923,23 @@ int zlib_compress(const void* input_buffer, int input_length, void* output_buffe
     return Z_OK;
 }
 
+static int write_compressed_chunk(FILE *fp, const void *buffer, int bytes_to_write)
+{
+    if (bytes_to_write > COMPRESS_BUFFER_SIZE) {
+        return 0;
+    }
+    int output_size = COMPRESS_BUFFER_SIZE;
+    if (zlib_compress(buffer, bytes_to_write, compress_buffer, &output_size) == Z_OK) {
+        write_int32(fp, output_size);
+        fwrite(compress_buffer, 1, output_size, fp);
+    } else {
+        // unable to compress: write uncompressed
+        write_int32(fp, UNCOMPRESSED);
+        fwrite(buffer, 1, bytes_to_write, fp);
+    }
+    return 1;
+}
+
 static int prepare_dynamic_piece(FILE *fp, file_piece *piece)
 {
     if (piece->dynamic) {
@@ -937,7 +954,7 @@ static int prepare_dynamic_piece(FILE *fp, file_piece *piece)
     return 1;
 }
 
-static int savegame_read_from_file(FILE *fp)
+static int savegame_read_from_file(FILE *fp, int version)
 {
     for (int i = 0; i < savegame_data.num_pieces; i++) {
         file_piece *piece = &savegame_data.pieces[i];
@@ -946,7 +963,7 @@ static int savegame_read_from_file(FILE *fp)
             continue;
         }
         if (piece->compressed) {
-            result = read_compressed_chunk(fp, piece->buf.data, piece->buf.size);
+            result = read_compressed_chunk(fp, piece->buf.data, piece->buf.size, version);
         } else {
             result = fread(piece->buf.data, 1, piece->buf.size, fp) == piece->buf.size;
         }
@@ -1011,7 +1028,7 @@ int game_file_io_read_saved_game(const char *filename, int offset)
         }
         log_info("Savegame version", 0, version);
         init_savegame_data(version);
-        result = savegame_read_from_file(fp);
+        result = savegame_read_from_file(fp, version);
     }
     file_close(fp);
     if (!result) {
@@ -1123,22 +1140,22 @@ static int savegame_read_file_info(FILE *fp, saved_game_info *info, int version)
         skip_piece(fp, version_data.piece_sizes.image_grid, 1);
     }
 
-    if (!read_compressed_chunk(fp, edge_grid.buf.data, edge_grid.buf.size)) {
+    if (!read_compressed_chunk(fp, edge_grid.buf.data, edge_grid.buf.size, version)) {
         return 0;
     }
 
-    if (!read_compressed_chunk(fp, building_grid.buf.data, building_grid.buf.size)) {
+    if (!read_compressed_chunk(fp, building_grid.buf.data, building_grid.buf.size, version)) {
         return 0;
     }
 
-    if (!read_compressed_chunk(fp, terrain_grid.buf.data, terrain_grid.buf.size)) {
+    if (!read_compressed_chunk(fp, terrain_grid.buf.data, terrain_grid.buf.size, version)) {
         return 0;
     }
 
     skip_piece(fp, 26244, 1);
     skip_piece(fp, 52488, 1);
 
-    if (!read_compressed_chunk(fp, bitfields_grid.buf.data, bitfields_grid.buf.size)) {
+    if (!read_compressed_chunk(fp, bitfields_grid.buf.data, bitfields_grid.buf.size, version)) {
         return 0;
     }
 
@@ -1159,7 +1176,7 @@ static int savegame_read_file_info(FILE *fp, saved_game_info *info, int version)
     skip_piece(fp, version_data.piece_sizes.formations, 1);
     skip_piece(fp, 12, 0);
 
-    if (!read_compressed_chunk(fp, city_data.buf.data, city_data.buf.size)) {
+    if (!read_compressed_chunk(fp, city_data.buf.data, city_data.buf.size, version)) {
         return 0;
     }
 
@@ -1167,7 +1184,7 @@ static int savegame_read_file_info(FILE *fp, saved_game_info *info, int version)
     skip_piece(fp, 64, 0);
     skip_piece(fp, 4, 0);
 
-    if (!prepare_dynamic_piece(fp, &buildings) || !read_compressed_chunk(fp, buildings.buf.data, buildings.buf.size)) {
+    if (!prepare_dynamic_piece(fp, &buildings) || !read_compressed_chunk(fp, buildings.buf.data, buildings.buf.size, version)) {
         return 0;
     }
 
