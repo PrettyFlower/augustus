@@ -848,8 +848,10 @@ static int read_compressed_chunk(FILE *fp, void *buffer, int bytes_to_read, int 
         return 0;
     }
     int input_size = read_int32(fp);
-    if ((unsigned int) input_size == UNCOMPRESSED && fread(buffer, 1, bytes_to_read, fp) != bytes_to_read) {
-        return 0;
+    if ((unsigned int)input_size == UNCOMPRESSED) {
+        if (fread(buffer, 1, bytes_to_read, fp) != bytes_to_read) {
+            return 0;
+        }
     } else {
         if (fread(compress_buffer, 1, input_size, fp) != input_size) {
             return 0;
@@ -870,15 +872,11 @@ static int read_compressed_chunk(FILE *fp, void *buffer, int bytes_to_read, int 
 
 static int zlib_compress(const void *input_buffer, int input_length, void *output_buffer, int *output_length)
 {
-    int ret;
-    unsigned have;
     z_stream strm;
-
     strm.zalloc = Z_NULL;
     strm.zfree = Z_NULL;
     strm.opaque = Z_NULL;
-    ret = deflateInit(&strm, Z_BEST_SPEED);
-    if (ret != Z_OK) {
+    if (deflateInit(&strm, Z_BEST_SPEED) != Z_OK) {
         return 0;
     }
 
@@ -886,14 +884,13 @@ static int zlib_compress(const void *input_buffer, int input_length, void *outpu
     strm.next_in = input_buffer;
     strm.avail_out = COMPRESS_BUFFER_SIZE;
     strm.next_out = output_buffer;
-    ret = deflate(&strm, Z_FINISH);
+    int result = deflate(&strm, Z_FINISH);
     deflateEnd(&strm);
-    if (ret != Z_STREAM_END || strm.avail_in != 0) {
+    if (result != Z_STREAM_END || strm.avail_in != 0) {
         return 0;
     }
 
-    have = COMPRESS_BUFFER_SIZE - strm.avail_out;
-    *output_length = have;
+    *output_length = COMPRESS_BUFFER_SIZE - strm.avail_out;
     return 1;
 }
 
