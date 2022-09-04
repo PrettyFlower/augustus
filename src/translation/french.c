@@ -61,6 +61,7 @@ static translation_string all_strings[] = {
     {TR_CONFIG_VISUAL_FEEDBACK_ON_DELETE, "Améliore le retour visuel durant le dégagement du terrain"},
     {TR_CONFIG_ALLOW_CYCLING_TEMPLES, "Permet de construire tous les temples successivement"},
     {TR_CONFIG_SHOW_WATER_STRUCTURE_RANGE, "Voir la zone d'effet en plaçant les bâtiments de distribution d'eau"},
+    {TR_CONFIG_SHOW_MARKET_RANGE, "Show range when building markets"},
     {TR_CONFIG_SHOW_CONSTRUCTION_SIZE, "Voir la taille des constructions durant le glissement de la souris"},
     {TR_CONFIG_HIGHLIGHT_LEGIONS, "Mettre en surbrillance les légions au survol du curseur"},
     {TR_CONFIG_ROTATE_MANUALLY, "Rotation corps de garde et l'arc de triomphe par raccourci clavier"},

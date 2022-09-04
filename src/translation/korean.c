@@ -43,6 +43,7 @@ static translation_string all_strings[] = {
     {TR_CONFIG_VISUAL_FEEDBACK_ON_DELETE, "지형 평탄화 시 시각적 표현 향상"},
     {TR_CONFIG_ALLOW_CYCLING_TEMPLES, "각각의 신전을 연속으로 설치 가능"},
     {TR_CONFIG_SHOW_WATER_STRUCTURE_RANGE, "저수조, 분수와 우물 설치 시 범위 표시"},
+    {TR_CONFIG_SHOW_MARKET_RANGE, "Show range when building markets"},
     {TR_CONFIG_SHOW_CONSTRUCTION_SIZE, "드래그 건설 시 전체 크기 표시"},
     {TR_CONFIG_HIGHLIGHT_LEGIONS, "커서가 올라간 군단 강조"},
     {TR_CONFIG_SHOW_MILITARY_SIDEBAR, "군단 제어판 표시"},

@@ -61,6 +61,7 @@ static translation_string all_strings[] = {
     {TR_CONFIG_VISUAL_FEEDBACK_ON_DELETE, "Das visuelle Feedback beim Planieren verbessern"},
     {TR_CONFIG_ALLOW_CYCLING_TEMPLES, "Erlaube alle Tempel nacheinander zu bauen"},
     {TR_CONFIG_SHOW_WATER_STRUCTURE_RANGE, "Zeige Reichweite beim Bauen von Reservoirs und Brunnen"},
+    {TR_CONFIG_SHOW_MARKET_RANGE, "Show range when building markets"},
     {TR_CONFIG_SHOW_CONSTRUCTION_SIZE, "Zeige Konstruktionsgröße beim Bauen"},
     {TR_CONFIG_HIGHLIGHT_LEGIONS, "Hebe Soldaten bei Berührung mit der Maus hervor"},
     {TR_CONFIG_ROTATE_MANUALLY, "Drehe Torhaus und Triumphbogen mit Schnelltaste"},

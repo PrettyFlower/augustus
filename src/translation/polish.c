@@ -41,6 +41,7 @@ static translation_string all_strings[] = {
     {TR_CONFIG_VISUAL_FEEDBACK_ON_DELETE, "Pokaż wybrany obszar przy oczyszczaniu terenu"},
     {TR_CONFIG_ALLOW_CYCLING_TEMPLES, "Pozwól na budowę kolejno każdej ze świątyń"},
     {TR_CONFIG_SHOW_WATER_STRUCTURE_RANGE, "Pokaż zasięg przy budowie rezerwuarów, fontann i studni"},
+    {TR_CONFIG_SHOW_MARKET_RANGE, "Show range when building markets"},
     {TR_CONFIG_SHOW_CONSTRUCTION_SIZE, "Pokaż rozmiar budowy przy przeciąganiu kursorem"},
     {TR_CONFIG_HIGHLIGHT_LEGIONS, "Podświetl legion przy najechaniu kursorem"},
     {TR_CONFIG_SHOW_MILITARY_SIDEBAR, "Włącz boczny panel wojskowy"},

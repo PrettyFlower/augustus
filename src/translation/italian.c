@@ -41,6 +41,7 @@ static translation_string all_strings[] = {
     {TR_CONFIG_VISUAL_FEEDBACK_ON_DELETE, "Migliora l'aspetto liberando il terreno"},
     {TR_CONFIG_ALLOW_CYCLING_TEMPLES, "Consente la costruzione di ogni tempio in successione"},
     {TR_CONFIG_SHOW_WATER_STRUCTURE_RANGE, "Mostra la copertura di cisterne, fontane e pozzi"},
+    {TR_CONFIG_SHOW_MARKET_RANGE, "Show range when building markets"},
     {TR_CONFIG_SHOW_CONSTRUCTION_SIZE, "Mostra le dimensioni della costruzione durante il trascinamento"},
     {TR_CONFIG_HIGHLIGHT_LEGIONS, "Evidenzia la legione al passaggio del cursore"},
     {TR_CONFIG_ROTATE_MANUALLY, "Ruota i Bastioni e l'Arco di Trionfo tramite scorciatoie da tastiera"},

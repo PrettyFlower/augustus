@@ -60,6 +60,7 @@ static translation_string all_strings[] = {
     {TR_CONFIG_VISUAL_FEEDBACK_ON_DELETE, "Öka visuell återkoppling vid rensning av land"},
     {TR_CONFIG_ALLOW_CYCLING_TEMPLES, "Tillåt att bygga varje tempel i följd"},
     {TR_CONFIG_SHOW_WATER_STRUCTURE_RANGE, "Visa räckvidd vid bygge av reservoarer, fontäner och brunnar"},
+    {TR_CONFIG_SHOW_MARKET_RANGE, "Show range when building markets"},
     {TR_CONFIG_SHOW_CONSTRUCTION_SIZE, "Visa dragbar byggnadsstorlek"},
     {TR_CONFIG_HIGHLIGHT_LEGIONS, "Framhäv legion när muspekaren är över den"},
 	{TR_CONFIG_ROTATE_MANUALLY, "Rotera grindstugor och triumfarken med kortkommando"},

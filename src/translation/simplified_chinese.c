@@ -61,6 +61,7 @@ static translation_string all_strings[] = {
     {TR_CONFIG_VISUAL_FEEDBACK_ON_DELETE, "优化清理土地视觉效果"},
     {TR_CONFIG_ALLOW_CYCLING_TEMPLES, "允许连续建造每种神庙"},
     {TR_CONFIG_SHOW_WATER_STRUCTURE_RANGE, "建造时显示贮水池水泉及水井覆盖范围"},
+    {TR_CONFIG_SHOW_MARKET_RANGE, "Show range when building markets"},
     {TR_CONFIG_SHOW_CONSTRUCTION_SIZE, "显示拖动建设大小"},
     {TR_CONFIG_HIGHLIGHT_LEGIONS, "鼠标悬停时高亮军团"},
     {TR_CONFIG_ROTATE_MANUALLY, "热键可旋转门房与胜利拱门建造方向"},
