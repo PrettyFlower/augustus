@@ -817,7 +817,6 @@ static void write_int32(FILE *fp, int value)
 
 static int zlib_decompress(const void *input_buffer, int input_length, void *output_buffer, int output_length)
 {
-    int ret;
     z_stream strm;
 
     strm.zalloc = Z_NULL;
@@ -825,8 +824,7 @@ static int zlib_decompress(const void *input_buffer, int input_length, void *out
     strm.opaque = Z_NULL;
     strm.avail_in = 0;
     strm.next_in = Z_NULL;
-    ret = inflateInit(&strm);
-    if (ret != Z_OK) {
+    if (inflateInit(&strm) != Z_OK) {
         return 0;
     }
 
@@ -834,9 +832,9 @@ static int zlib_decompress(const void *input_buffer, int input_length, void *out
     strm.next_in = input_buffer;
     strm.avail_out = output_length;
     strm.next_out = output_buffer;
-    ret = inflate(&strm, Z_NO_FLUSH);
+    int result = inflate(&strm, Z_NO_FLUSH);
     inflateEnd(&strm);
-    if (ret != Z_STREAM_END || strm.avail_out != 0) {
+    if (result != Z_STREAM_END || strm.avail_out != 0) {
         return 0;
     }
     return 1;
@@ -849,25 +847,18 @@ static int read_compressed_chunk(FILE *fp, void *buffer, int bytes_to_read, int 
     }
     int input_size = read_int32(fp);
     if ((unsigned int)input_size == UNCOMPRESSED) {
-        if (fread(buffer, 1, bytes_to_read, fp) != bytes_to_read) {
-            return 0;
-        }
+        return fread(buffer, 1, bytes_to_read, fp) == bytes_to_read;
     } else {
         if (fread(compress_buffer, 1, input_size, fp) != input_size) {
             return 0;
         }
 
         if (version <= SAVE_GAME_LAST_ZIP_COMPRESSION) {
-            if (!zip_decompress(compress_buffer, input_size, buffer, &bytes_to_read)) {
-                return 0;
-            }
+            return zip_decompress(compress_buffer, input_size, buffer, &bytes_to_read);
         } else {
-            if (!zlib_decompress(compress_buffer, input_size, buffer, bytes_to_read)) {
-                return 0;
-            }
+            return zlib_decompress(compress_buffer, input_size, buffer, bytes_to_read);
         }
     }
-    return 1;
 }
 
 static int zlib_compress(const void *input_buffer, int input_length, void *output_buffer, int *output_length)
