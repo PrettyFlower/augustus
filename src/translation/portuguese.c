@@ -60,7 +60,6 @@ static translation_string all_strings[] = {
     {TR_CONFIG_VISUAL_FEEDBACK_ON_DELETE, "Ativar indicador visual ao limpar o terreno"},
     {TR_CONFIG_ALLOW_CYCLING_TEMPLES, "Permitir construir cada templo em sequência"},
     {TR_CONFIG_SHOW_WATER_STRUCTURE_RANGE, "Mostrar alcance ao construir reservatórios, fontes e poços"},
-    {TR_CONFIG_SHOW_MARKET_RANGE, "Show range when building markets"},
     {TR_CONFIG_SHOW_CONSTRUCTION_SIZE, "Mostrar o tamanho da construção ao arrastar"},
     {TR_CONFIG_HIGHLIGHT_LEGIONS, "Realçar legiões focadas pelo mouse"},
     {TR_CONFIG_ROTATE_MANUALLY, "Rotacionar Portões e Arcos do Triunfo por atalhos"},

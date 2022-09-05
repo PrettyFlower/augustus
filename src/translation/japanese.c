@@ -40,7 +40,6 @@ static translation_string all_strings[] = {
     {TR_CONFIG_VISUAL_FEEDBACK_ON_DELETE, "整地時のビジュアル演出を改善"},
     {TR_CONFIG_ALLOW_CYCLING_TEMPLES, "神殿の連続建設を許可"},
     {TR_CONFIG_SHOW_WATER_STRUCTURE_RANGE, "貯水場、噴水、井戸の建築時に範囲を表示"},
-    {TR_CONFIG_SHOW_MARKET_RANGE, "Show range when building markets"},
     {TR_CONFIG_SHOW_CONSTRUCTION_SIZE, "ドラッグ可能な建設サイズを表示"},
     {TR_CONFIG_HIGHLIGHT_LEGIONS, "カーソルを合わせた軍団をハイライト"},
     {TR_CONFIG_SHOW_MILITARY_SIDEBAR, "軍事サイドバーを有効化"},

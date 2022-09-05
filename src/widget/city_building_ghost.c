@@ -1069,8 +1069,7 @@ static void draw_market(const map_tile *tile, int x, int y)
         for (int i = 0; i < num_tiles; i++) {
             blocked_tiles[i] = 1;
         }
-    }
-    else {
+    } else {
         blocked = is_blocked_for_building(grid_offset, building_size, blocked_tiles);
     }
     if (config_get(CONFIG_UI_SHOW_MARKET_RANGE)) {

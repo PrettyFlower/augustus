@@ -60,7 +60,6 @@ static translation_string all_strings[] = {
     {TR_CONFIG_VISUAL_FEEDBACK_ON_DELETE, "Mejorar la retroalimentación visual al limpiar terreno"},
     {TR_CONFIG_ALLOW_CYCLING_TEMPLES, "Permitir construcción secuencial de templos"},
     {TR_CONFIG_SHOW_WATER_STRUCTURE_RANGE, "Mostrar área cubierta por depósitos, fuentes y pozos al construir"},
-    {TR_CONFIG_SHOW_MARKET_RANGE, "Show range when building markets"},
     {TR_CONFIG_SHOW_CONSTRUCTION_SIZE, "Mostrar medidas de construcción al arrastrar"},
     {TR_CONFIG_HIGHLIGHT_LEGIONS, "Resaltar legión bajo el cursor"},
     {TR_CONFIG_SHOW_MILITARY_SIDEBAR, "Activar barra militar lateral"},
