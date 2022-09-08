@@ -95,7 +95,7 @@ static int is_non_citizen(figure *f)
     if (f->type == FIGURE_INDIGENOUS_NATIVE && f->action_state == FIGURE_ACTION_159_NATIVE_ATTACKING) {
         return f->id;
     }
-    if (f->type == FIGURE_WOLF || f->type == FIGURE_SHEEP || f->type == FIGURE_ZEBRA) {
+    if (f->type == FIGURE_WOLF) {
         return f->id;
     }
     return 0;
@@ -203,14 +203,12 @@ void figure_friendly_arrow_action(figure* f)
 	if (target_id) {
 		missile_hit_target(f, target_id, FIGURE_ENEMY_CAESAR_LEGIONARY);
 		sound_effect_play(SOUND_EFFECT_ARROW_HIT);
-	}
-	else if (should_die) {
+	} else if (should_die) {
 		f->state = FIGURE_STATE_DEAD;
 	}
 	int dir = (16 + f->direction - 2 * city_view_orientation()) % 16;
 	f->image_id = image_group(GROUP_FIGURE_MISSILE) + 16 + dir;
 }
-
 
 void figure_javelin_action(figure *f)
 {
