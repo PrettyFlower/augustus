@@ -281,7 +281,7 @@ int figure_combat_get_missile_target_for_soldier(figure *shooter, int max_distan
         if (figure_is_dead(f)) {
             continue;
         }
-        if (figure_is_enemy(f) || f->type == FIGURE_WOLF || is_attacking_native(f)) {
+        if (figure_is_enemy(f) || figure_is_herd(f) || is_attacking_native(f)) {
             int distance = calc_maximum_distance(x, y, f->x, f->y);
             if (distance < min_distance && figure_movement_can_launch_cross_country_missile(x, y, f->x, f->y)) {
                 min_distance = distance;
@@ -389,6 +389,8 @@ void figure_combat_attack_figure_at(figure *f, int grid_offset)
         } else if (figure_category == FIGURE_CATEGORY_HOSTILE && opponent_category == FIGURE_CATEGORY_ARMED) {
             attack = 1;
         } else if (figure_category == FIGURE_CATEGORY_HOSTILE && opponent_category == FIGURE_CATEGORY_CRIMINAL) {
+            attack = 1;
+        } else if (figure_category == FIGURE_CATEGORY_ARMED && opponent_category == FIGURE_CATEGORY_ANIMAL) {
             attack = 1;
         } else if (figure_category == FIGURE_CATEGORY_HOSTILE && opponent_category == FIGURE_CATEGORY_ANIMAL) {
             attack = 1;
