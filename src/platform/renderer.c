@@ -8,6 +8,7 @@
 #include "platform/cursor.h"
 #include "platform/emscripten/emscripten.h"
 #include "platform/haiku/haiku.h"
+#include "platform/masked_figures.h"
 #include "platform/platform.h"
 #include "platform/screen.h"
 #include "platform/switch/switch.h"
@@ -182,13 +183,18 @@ static void reset_viewport(void)
     SDL_RenderSetClipRect(data.renderer, NULL);
 }
 
-static void clear_screen(void)
+static void clear_screen_with_color(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
     if (data.paused) {
         return;
     }
-    SDL_SetRenderDrawColor(data.renderer, 0, 0, 0, 0);
+    SDL_SetRenderDrawColor(data.renderer, r, g, b, a);
     SDL_RenderClear(data.renderer);
+}
+
+static void clear_screen()
+{
+    clear_screen_with_color(0, 0, 0, 0);
 }
 
 static void get_max_image_size(int *width, int *height)
@@ -843,6 +849,21 @@ static int supports_yuv_texture(void)
     return data.supports_yuv_textures;
 }
 
+static change_target_texture(render_texture texture)
+{
+    masked_figures_change_target_texture(data.renderer, data.render_texture, texture);
+}
+
+static change_blend_mode(render_texture render_texture, blend_mode mode)
+{
+    masked_figures_change_blend_mode(data.renderer, data.render_texture, render_texture, mode);
+}
+
+static draw_render_texture(render_texture texture)
+{
+    masked_figures_draw_target_texture(data.renderer, data.render_texture, texture);
+}
+
 static void create_renderer_interface(void)
 {
     data.renderer_interface.clear_screen = clear_screen;
@@ -874,6 +895,10 @@ static void create_renderer_interface(void)
     data.renderer_interface.load_unpacked_image = load_unpacked_image;
     data.renderer_interface.should_pack_image = should_pack_image;
     data.renderer_interface.update_scale = update_scale;
+    data.renderer_interface.clear_screen_with_color = clear_screen_with_color;
+    data.renderer_interface.change_target_texture = change_target_texture;
+    data.renderer_interface.change_blend_mode = change_blend_mode;
+    data.renderer_interface.draw_render_texture = draw_render_texture;
 
     graphics_renderer_set_interface(&data.renderer_interface);
 }
@@ -996,7 +1021,7 @@ int platform_renderer_create_render_texture(int width, int height)
 #ifdef USE_TEXTURE_SCALE_MODE
         }
 #endif
-
+        masked_figures_init(data.renderer, width, height);
         return 1;
     } else {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Unable to create render texture: %s", SDL_GetError());

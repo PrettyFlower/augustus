@@ -209,6 +209,7 @@ set(PLATFORM_FILES
     ${PROJECT_SOURCE_DIR}/src/platform/joystick.c
     ${PROJECT_SOURCE_DIR}/src/platform/keyboard_input.c
     ${PROJECT_SOURCE_DIR}/src/platform/log.c
+    ${PROJECT_SOURCE_DIR}/src/platform/masked_figures.c
     ${PROJECT_SOURCE_DIR}/src/platform/mouse.c
     ${PROJECT_SOURCE_DIR}/src/platform/platform.c
     ${PROJECT_SOURCE_DIR}/src/platform/prefs.c

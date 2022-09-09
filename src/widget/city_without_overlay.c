@@ -703,6 +703,12 @@ static void draw_connectable_construction_ghost(int x, int y, int grid_offset)
     image_draw_isometric_top_from_draw_tile(image_id, x, y, COLOR_MASK_BUILDING_GHOST, draw_context.scale);
 }
 
+static void change_texture(render_texture texture)
+{
+    graphics_renderer()->change_target_texture(texture);
+    set_city_clip_rectangle();
+}
+
 void city_without_overlay_draw(int selected_figure_id, pixel_coordinate *figure_coord, const map_tile *tile)
 {
     int highlighted_formation = 0;
@@ -725,11 +731,30 @@ void city_without_overlay_draw(int selected_figure_id, pixel_coordinate *figure_
     int should_mark_deleting = city_building_ghost_mark_deleting(tile);
     city_view_foreach_valid_map_tile(draw_footprint, 0, 0);
     if (!should_mark_deleting) {
-        city_view_foreach_valid_map_tile(
-            draw_top,
-            draw_figures,
-            draw_animation
-        );
+        graphics_renderer_interface *renderer = graphics_renderer();
+        change_texture(TEXTURE_FIGURES);
+        renderer->clear_screen();
+        city_view_foreach_valid_map_tile(draw_figures, 0, 0);
+
+        change_texture(TEXTURE_BUILDINGS);
+        renderer->clear_screen();
+        city_view_foreach_valid_map_tile(draw_top, draw_animation, 0);
+
+        change_texture(TEXTURE_MASKING);
+        renderer->clear_screen_with_color(0, 0, 0, 255);
+        renderer->change_blend_mode(TEXTURE_FIGURES, BLEND_MASK);
+        renderer->change_blend_mode(TEXTURE_BUILDINGS, BLEND_MASK);
+        renderer->draw_render_texture(TEXTURE_FIGURES);
+        renderer->draw_render_texture(TEXTURE_BUILDINGS);
+
+        change_texture(TEXTURE_DEFAULT);
+        renderer->change_blend_mode(TEXTURE_FIGURES, BLEND_DEFAULT);
+        renderer->change_blend_mode(TEXTURE_BUILDINGS, BLEND_DEFAULT);
+        renderer->change_blend_mode(TEXTURE_MASKING, BLEND_DEFAULT);
+        renderer->draw_render_texture(TEXTURE_FIGURES);
+        renderer->draw_render_texture(TEXTURE_BUILDINGS);
+        renderer->draw_render_texture(TEXTURE_MASKING);
+
         if (!selected_figure_id) {
             if (building_is_connectable(building_construction_type())) {
                 city_view_foreach_map_tile(draw_connectable_construction_ghost);

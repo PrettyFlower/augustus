@@ -3,6 +3,8 @@
 
 #include "core/image.h"
 
+#include "SDL.h"
+
 typedef enum {
     ATLAS_FIRST = 0,
     ATLAS_MAIN = 0,
@@ -38,6 +40,18 @@ typedef struct {
     int *image_widths;
     int *image_heights;
 } image_atlas_data;
+
+typedef enum {
+    TEXTURE_DEFAULT,
+    TEXTURE_FIGURES,
+    TEXTURE_BUILDINGS,
+    TEXTURE_MASKING
+} render_texture;
+
+typedef enum {
+    BLEND_DEFAULT = SDL_BLENDMODE_BLEND,
+    BLEND_MASK = 99
+} blend_mode;
 
 typedef struct {
     void (*clear_screen)(void);
@@ -81,6 +95,11 @@ typedef struct {
     int (*should_pack_image)(int width, int height);
 
     void (*update_scale)(int city_scale);
+
+    void (*clear_screen_with_color)(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+    void (*change_target_texture)(render_texture texture);
+    void (*change_blend_mode)(render_texture render_texture, blend_mode mode);
+    void (*draw_render_texture)(render_texture texture);
 } graphics_renderer_interface;
 
 const graphics_renderer_interface *graphics_renderer(void);
