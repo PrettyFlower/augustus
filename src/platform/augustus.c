@@ -148,7 +148,7 @@ static void platform_per_frame_callback(void)
 }
 #endif
 
-//#ifdef DRAW_FPS
+#ifdef DRAW_FPS
 static struct {
     int frame_count;
     int last_fps;
@@ -184,8 +184,8 @@ static void run_and_draw(void)
     }
     platform_renderer_render();
 }
-//#else
-/*static void run_and_draw(void)
+#else
+static void run_and_draw(void)
 {
     time_set_millis(SDL_GetTicks());
 
@@ -193,8 +193,8 @@ static void run_and_draw(void)
     game_draw();
 
     platform_renderer_render();
-}*/
-//#endif
+}
+#endif
 
 static void handle_mouse_button(SDL_MouseButtonEvent *event, int is_down)
 {

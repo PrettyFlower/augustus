@@ -7,6 +7,8 @@
 
 int platform_renderer_init(SDL_Window *window);
 
+void platform_renderer_set_texture_color_mode(SDL_Texture *texture, color_t color);
+
 int platform_renderer_create_render_texture(int width, int height);
 
 int platform_renderer_lost_render_texture(void);

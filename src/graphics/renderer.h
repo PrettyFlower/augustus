@@ -50,7 +50,8 @@ typedef enum {
 
 typedef enum {
     BLEND_DEFAULT = SDL_BLENDMODE_BLEND,
-    BLEND_MASK = 99
+    BLEND_MASK_ADD_COLOR = 99,
+    BLEND_MASK_ALPHA = 100
 } blend_mode;
 
 typedef struct {
@@ -97,6 +98,7 @@ typedef struct {
     void (*update_scale)(int city_scale);
 
     void (*clear_screen_with_color)(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
+    void (*set_texture_color_mode)(render_texture render_texture, color_t color);
     void (*change_target_texture)(render_texture texture);
     void (*change_blend_mode)(render_texture render_texture, blend_mode mode);
     void (*draw_render_texture)(render_texture texture);

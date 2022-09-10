@@ -1,5 +1,7 @@
 #include "masked_figures.h"
 
+#include "platform/renderer.h"
+
 static struct {
 	SDL_Texture *figures_texture;
 	SDL_Texture *buildings_texture;
@@ -45,11 +47,13 @@ void masked_figures_change_target_texture(SDL_Renderer *renderer, SDL_Texture *d
 	SDL_SetRenderTarget(renderer, texture);
 }
 
-void masked_figures_change_blend_mode(SDL_Renderer *renderer, SDL_Texture *default_texture, render_texture render_texture, blend_mode mode)
+void masked_figures_change_blend_mode(SDL_Texture *default_texture, render_texture render_texture, blend_mode mode)
 {
 	SDL_Texture *texture = get_texture(render_texture, default_texture);
-	if (mode == BLEND_MASK) {
-		mode = SDL_ComposeCustomBlendMode(SDL_BLENDFACTOR_ZERO, SDL_BLENDFACTOR_DST_COLOR, SDL_BLENDOPERATION_ADD, SDL_BLENDFACTOR_DST_ALPHA, SDL_BLENDFACTOR_SRC_ALPHA, SDL_BLENDOPERATION_MINIMUM);
+	if (mode == BLEND_MASK_ADD_COLOR) {
+		mode = SDL_ComposeCustomBlendMode(SDL_BLENDFACTOR_SRC_COLOR, SDL_BLENDFACTOR_DST_COLOR, SDL_BLENDOPERATION_ADD, SDL_BLENDFACTOR_SRC_ALPHA, SDL_BLENDFACTOR_DST_ALPHA, SDL_BLENDOPERATION_MINIMUM);
+	} else if (mode == BLEND_MASK_ALPHA) {
+		mode = SDL_ComposeCustomBlendMode(SDL_BLENDFACTOR_ZERO, SDL_BLENDFACTOR_DST_COLOR, SDL_BLENDOPERATION_ADD, SDL_BLENDFACTOR_SRC_ALPHA, SDL_BLENDFACTOR_DST_ALPHA, SDL_BLENDOPERATION_MINIMUM);
 	}
 	int success = SDL_SetTextureBlendMode(texture, mode);
 	if (success == -1)
@@ -57,6 +61,12 @@ void masked_figures_change_blend_mode(SDL_Renderer *renderer, SDL_Texture *defau
 		// idk something bad
 		mode = -1;
 	}
+}
+
+void masked_figures_change_color_mode(SDL_Texture *default_texture, render_texture render_texture, color_t color)
+{
+	SDL_Texture *texture = get_texture(render_texture, default_texture);
+	platform_renderer_set_texture_color_mode(texture, color);
 }
 
 void masked_figures_draw_target_texture(SDL_Renderer *renderer, SDL_Texture *default_texture, render_texture render_texture)

@@ -192,7 +192,7 @@ static void clear_screen_with_color(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
     SDL_RenderClear(data.renderer);
 }
 
-static void clear_screen()
+static void clear_screen(void)
 {
     clear_screen_with_color(0, 0, 0, 0);
 }
@@ -435,13 +435,18 @@ static SDL_Texture *get_texture(int texture_id)
     return data.texture_lists[type][texture_id & IMAGE_ATLAS_BIT_MASK];
 }
 
-static void set_texture_color_and_scale_mode(SDL_Texture *texture, color_t color, float scale)
+void platform_renderer_set_texture_color_mode(SDL_Texture *texture, color_t color)
 {
     SDL_SetTextureColorMod(texture,
         (color & COLOR_CHANNEL_RED) >> COLOR_BITSHIFT_RED,
         (color & COLOR_CHANNEL_GREEN) >> COLOR_BITSHIFT_GREEN,
         (color & COLOR_CHANNEL_BLUE) >> COLOR_BITSHIFT_BLUE);
     SDL_SetTextureAlphaMod(texture, (color & COLOR_CHANNEL_ALPHA) >> COLOR_BITSHIFT_ALPHA);
+}
+
+static void set_texture_color_and_scale_mode(SDL_Texture *texture, color_t color, float scale)
+{
+    platform_renderer_set_texture_color_mode(texture, color);
 
 #ifdef USE_TEXTURE_SCALE_MODE
     if (!HAS_TEXTURE_SCALE_MODE) {
@@ -849,17 +854,22 @@ static int supports_yuv_texture(void)
     return data.supports_yuv_textures;
 }
 
-static change_target_texture(render_texture texture)
+static void set_texture_color_mode(render_texture render_texture, color_t color)
+{
+    masked_figures_change_color_mode(data.render_texture, render_texture, color);
+}
+
+static void change_target_texture(render_texture texture)
 {
     masked_figures_change_target_texture(data.renderer, data.render_texture, texture);
 }
 
-static change_blend_mode(render_texture render_texture, blend_mode mode)
+static void change_blend_mode(render_texture render_texture, blend_mode mode)
 {
-    masked_figures_change_blend_mode(data.renderer, data.render_texture, render_texture, mode);
+    masked_figures_change_blend_mode(data.render_texture, render_texture, mode);
 }
 
-static draw_render_texture(render_texture texture)
+static void draw_render_texture(render_texture texture)
 {
     masked_figures_draw_target_texture(data.renderer, data.render_texture, texture);
 }
@@ -896,6 +906,7 @@ static void create_renderer_interface(void)
     data.renderer_interface.should_pack_image = should_pack_image;
     data.renderer_interface.update_scale = update_scale;
     data.renderer_interface.clear_screen_with_color = clear_screen_with_color;
+    data.renderer_interface.set_texture_color_mode = set_texture_color_mode;
     data.renderer_interface.change_target_texture = change_target_texture;
     data.renderer_interface.change_blend_mode = change_blend_mode;
     data.renderer_interface.draw_render_texture = draw_render_texture;

@@ -742,10 +742,16 @@ void city_without_overlay_draw(int selected_figure_id, pixel_coordinate *figure_
 
         change_texture(TEXTURE_MASKING);
         renderer->clear_screen_with_color(0, 0, 0, 255);
-        renderer->change_blend_mode(TEXTURE_FIGURES, BLEND_MASK);
-        renderer->change_blend_mode(TEXTURE_BUILDINGS, BLEND_MASK);
+
+        renderer->change_blend_mode(TEXTURE_FIGURES, BLEND_MASK_ADD_COLOR);
+        renderer->set_texture_color_mode(TEXTURE_FIGURES, 0xffb0b0b0);
         renderer->draw_render_texture(TEXTURE_FIGURES);
+        renderer->set_texture_color_mode(TEXTURE_FIGURES, 0xffffffff);
+
+        renderer->change_blend_mode(TEXTURE_BUILDINGS, BLEND_MASK_ALPHA);
+        renderer->set_texture_color_mode(TEXTURE_BUILDINGS, 0xff000000);
         renderer->draw_render_texture(TEXTURE_BUILDINGS);
+        renderer->set_texture_color_mode(TEXTURE_BUILDINGS, 0xffffffff);
 
         change_texture(TEXTURE_DEFAULT);
         renderer->change_blend_mode(TEXTURE_FIGURES, BLEND_DEFAULT);
