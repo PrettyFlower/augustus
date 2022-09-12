@@ -9,6 +9,8 @@
 #include "graphics/font.h"
 #include "graphics/renderer.h"
 
+#include "png.h"
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -241,6 +243,75 @@ static struct {
     int max_image_height;
 } data;
 
+static void save_final_image(const char *path, unsigned int width, unsigned int height, const color_t *pixels)
+{
+    png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, 0, 0, 0);
+
+    if (!png_ptr) {
+        log_error("Error creating png structure for", path, 0);
+        return;
+    }
+    png_infop info_ptr = png_create_info_struct(png_ptr);
+    if (!info_ptr) {
+        log_error("Error creating png structure for", path, 0);
+        png_destroy_write_struct(&png_ptr, &info_ptr);
+        return;
+    }
+    png_set_compression_level(png_ptr, 3);
+
+    FILE *fp = fopen(path, "wb");
+    if (!fp) {
+        log_error("Error creating final png file at", path, 0);
+        png_destroy_write_struct(&png_ptr, &info_ptr);
+        return;
+    }
+    png_init_io(png_ptr, fp);
+
+    if (setjmp(png_jmpbuf(png_ptr))) {
+        log_error("Error constructing png file", path, 0);
+        fclose(fp);
+        png_destroy_write_struct(&png_ptr, &info_ptr);
+        return;
+    }
+    png_set_IHDR(png_ptr, info_ptr, width, height, 8, PNG_COLOR_TYPE_RGBA,
+        PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+    png_write_info(png_ptr, info_ptr);
+
+    uint8_t *row_pixels = malloc(width * 4);
+    if (!row_pixels) {
+        log_error("Out of memory for png creation", path, 0);
+        fclose(fp);
+        png_destroy_write_struct(&png_ptr, &info_ptr);
+        return;
+    }
+    memset(row_pixels, 0, width * 4);
+
+    if (setjmp(png_jmpbuf(png_ptr))) {
+        log_error("Error constructing png file", path, 0);
+        free(row_pixels);
+        fclose(fp);
+        png_destroy_write_struct(&png_ptr, &info_ptr);
+        return;
+    }
+    for (unsigned int y = 0; y < height; ++y) {
+        uint8_t *pixel = row_pixels;
+        for (unsigned int x = 0; x < width; x++) {
+            color_t input = pixels[y * width + x];
+            *(pixel + 0) = (uint8_t)COLOR_COMPONENT(input, COLOR_BITSHIFT_RED);
+            *(pixel + 1) = (uint8_t)COLOR_COMPONENT(input, COLOR_BITSHIFT_GREEN);
+            *(pixel + 2) = (uint8_t)COLOR_COMPONENT(input, COLOR_BITSHIFT_BLUE);
+            *(pixel + 3) = (uint8_t)COLOR_COMPONENT(input, COLOR_BITSHIFT_ALPHA);
+            pixel += 4;
+        }
+        png_write_row(png_ptr, row_pixels);
+    }
+    png_write_end(png_ptr, info_ptr);
+
+    free(row_pixels);
+    fclose(fp);
+    png_destroy_write_struct(&png_ptr, &info_ptr);
+}
+
 static void read_header(buffer *buf)
 {
     buffer_skip(buf, 80); // header integers
@@ -440,9 +511,20 @@ static void convert_uncompressed(buffer *buf, int width, int height, int x_offse
 static void copy_compressed(const image *img, image_draw_data *draw_data, color_t *dst, int dst_width)
 {
     for (int y = 0; y < img->height; y++) {
-        memcpy(&dst[(img->atlas.y_offset + y) * dst_width + img->atlas.x_offset],
-            &((color_t *) draw_data->buffer)[(y + img->y_offset) * img->original.width + img->x_offset],
-            img->width * sizeof(color_t));
+        int dest_offset = (img->atlas.y_offset + y) * dst_width + img->atlas.x_offset;
+        int src_offset = (y + img->y_offset) * img->original.width + img->x_offset;
+        size_t size = img->width * sizeof(color_t);
+        memcpy(&dst[dest_offset], &((color_t *) draw_data->buffer)[src_offset], size);
+    }
+}
+
+static void copy_compressed2(const image *img, color_t *src, color_t *dst, int dst_width)
+{
+    for (int y = 0; y < img->height; y++) {
+        int dest_offset = (img->atlas.y_offset + y) * dst_width + img->atlas.x_offset;
+        int src_offset = (y + img->y_offset) * img->original.width + img->x_offset;
+        size_t size = img->width * sizeof(color_t);
+        memcpy(&dst[dest_offset], &src[src_offset], size);
     }
 }
 
@@ -553,6 +635,52 @@ static void convert_images(image *images, image_draw_data *draw_datas, int size,
     }
 }
 
+static void save_images(int climate, image *images, image_draw_data *draw_datas, int size, buffer *buf)
+{
+    char climate_str[80];
+    if (climate == 0) {
+        strncpy(climate_str, "climate_central", sizeof(climate_str));
+    } else if (climate == 1) {
+        strncpy(climate_str, "climate_northern", sizeof(climate_str));
+    } else if (climate == 2) {
+        strncpy(climate_str, "climate_desert", sizeof(climate_str));
+    }
+
+    for (int i = 0; i < size; i++) {
+        image *img = &images[i];
+        image_draw_data *draw_data = &draw_datas[i];
+        if (image_is_external(img)) {
+            continue;
+        }
+        buffer_set(buf, draw_data->offset);
+        color_t *dst = malloc(img->width * img->height * sizeof(color_t));
+        if (dst) {
+            if (draw_data->is_compressed) {
+                convert_compressed(buf, img->width, 0, 0, draw_data->data_length, dst, img->width);
+            } else if (img->is_isometric) {
+                convert_isometric_footprint(buf, img, dst, img->width);
+                if (img->top) {
+                    color_t *dst_top = malloc(img->top->width * img->top->height * sizeof(color_t));
+                    buffer_set(buf, draw_data->offset + draw_data->uncompressed_length);
+                    convert_compressed(buf, img->top->width, 0, 0,
+                        draw_data->data_length - draw_data->uncompressed_length, dst_top, img->top->width);
+                    char path2[80];
+                    sprintf(path2, "C:/code/Augustus/%s/%04d_top.png", climate_str, i);
+                    save_final_image(path2, img->top->width, img->top->height, dst_top);
+                    free(dst_top);
+                }
+            } else {
+                convert_uncompressed(buf, img->width, img->height, 0, 0, dst, img->width);
+            }
+
+            char path[80];
+            sprintf(path, "C:/code/Augustus/%s/%04d.png", climate_str, i);
+            save_final_image(path, img->width, img->height, dst);
+            free(dst);
+        }
+    }
+}
+
 static void make_font_white(const image *img, const image_atlas_data *atlas_data)
 {
     color_t *pixels = atlas_data->buffers[img->atlas.id & IMAGE_ATLAS_BIT_MASK];
@@ -657,6 +785,7 @@ int image_load_climate(int climate_id, int is_editor, int force_reload, int keep
     }
 
     buffer_init(&buf, tmp_data, data_size);
+    save_images(climate_id, data.main, draw_data, IMAGE_MAIN_ENTRIES, &buf);
     if (!crop_and_pack_images(&buf, data.main, draw_data, IMAGE_MAIN_ENTRIES, ATLAS_MAIN)) {
         free(tmp_data);
         free_draw_data(draw_data, IMAGE_MAIN_ENTRIES);
@@ -1207,6 +1336,7 @@ int image_get_external_dimensions(const image *img, int *width, int *height)
 
 void image_crop(image *img, const color_t *pixels)
 {
+    return;
     if (!img->width || !img->height) {
         return;
     }

@@ -13,6 +13,10 @@ res/version.txt
 res/julius.icns
 res/shell.html
 res/packed_assets/
+climate_central/
+climate_desert/
+climate_northern/
+zebra_grazing/
 
 # Build output and data directories
 /build*/
