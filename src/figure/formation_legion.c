@@ -337,6 +337,19 @@ int formation_legion_at_grid_offset(int grid_offset)
     return map_figure_foreach_until(grid_offset, is_legion);
 }
 
+static int is_legion_or_herd(figure *f)
+{
+    if (is_legion(f) || figure_is_herd(f)) {
+        return f->formation_id;
+    }
+    return 0;
+}
+
+int formation_legion_or_herd_at_grid_offset(int grid_offset)
+{
+    return map_figure_foreach_until(grid_offset, is_legion_or_herd);
+}
+
 int formation_legion_at_building(int grid_offset)
 {
     int building_id = map_building_at(grid_offset);

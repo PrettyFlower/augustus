@@ -31,6 +31,8 @@ int formation_legion_curse(void);
 
 int formation_legion_at_grid_offset(int grid_offset);
 
+int formation_legion_or_herd_at_grid_offset(int grid_offset);
+
 int formation_legion_at_building(int grid_offset);
 
 void formation_legion_update(void);
