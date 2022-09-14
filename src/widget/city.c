@@ -49,7 +49,7 @@ static struct {
     int capture_input;
 } data;
 
-static void set_city_clip_rectangle(void)
+void set_city_clip_rectangle(void)
 {
     int x, y, width, height;
     city_view_get_viewport(&x, &y, &width, &height);
@@ -621,18 +621,21 @@ static void handle_mouse(const mouse *m)
     if (m->left.went_up) {
         build_end();
     }
-    if (m->right.went_down && input_coords_in_city(m->x, m->y) && !building_construction_type()) {
+    if (m->right.went_down && input_coords_in_city(m->x, m->y)) {
         scroll_drag_start(0);
     }
     if (m->right.went_up) {
-        if (!building_construction_type()) {
-            int has_scrolled = scroll_drag_end();
-            if (!has_scrolled && handle_right_click_allow_building_info(tile)) {
-                window_building_info_show(tile->grid_offset);
-            }
-        } else {
+        if (scroll_drag_end()) {
+            return;
+        }
+        if (building_construction_type()) {
             building_construction_cancel();
             window_request_refresh();
+            return;
+        }
+        if (handle_right_click_allow_building_info(tile)) {
+            window_building_info_show(tile->grid_offset);
+            return;
         }
     }
 }
@@ -705,17 +708,21 @@ void widget_city_handle_input_military(const mouse *m, const hotkeys *h, int leg
             data.capture_input = 0;
         }
     }
-    if (m->right.went_up || h->escape_pressed) {
+    
+    zoom_map(m, city_view_get_scale());
+
+    if ((!m->is_touch && m->left.went_down)
+        || (m->is_touch && m->left.went_up && touch_was_click(touch_get_earliest()))) {
+        military_map_click(legion_formation_id, tile);
+    }
+
+    if (m->right.went_down && input_coords_in_city(m->x, m->y)) {
+        scroll_drag_start(0);
+    }
+    if ((m->right.went_up && !scroll_drag_end()) || h->escape_pressed) {
         data.capture_input = 0;
         city_warning_clear_all();
         window_city_show();
-    } else {
-        update_city_view_coords(m->x, m->y, tile);
-        zoom_map(m, city_view_get_scale());
-        if ((!m->is_touch && m->left.went_down)
-            || (m->is_touch && m->left.went_up && touch_was_click(touch_get_earliest()))) {
-            military_map_click(legion_formation_id, tile);
-        }
     }
 }
 

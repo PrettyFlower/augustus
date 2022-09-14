@@ -111,6 +111,8 @@ void city_health_dispatch_sickness(figure *f)
 static int cause_disease(void)
 {
     int sick_people = 0;
+    building_type sick_building_type = 0;
+    int grid_offset = 0;
     // Kill people who have sickness level to max in houses
     for (building_type type = BUILDING_HOUSE_SMALL_TENT; type <= BUILDING_HOUSE_LUXURY_PALACE; type++) {
         building *next_of_type = 0; // building_destroy_by_plague changes the building type
@@ -119,6 +121,8 @@ static int cause_disease(void)
             if (b->state == BUILDING_STATE_IN_USE && b->house_size && b->house_population) {
                 if (b->sickness_level >= MAX_SICKNESS_LEVEL) {
                     sick_people = 1;
+                    sick_building_type = b->type;
+                    grid_offset = b->grid_offset;
                     if (city_health() < 40) {
                         building_destroy_by_plague(b);
                     } else {
@@ -145,7 +149,7 @@ static int cause_disease(void)
     }
 
     if (sick_people) {
-        city_message_post(1, MESSAGE_HEALTH_PESTILENCE, 0, 0);
+        city_message_post_with_popup_delay(MESSAGE_CAT_ILLNESS, MESSAGE_SICKNESS, sick_building_type, grid_offset);
     }
 
     for (int i = 0; i < NUM_PLAGUE_BUILDINGS; i++) {
@@ -392,31 +396,27 @@ int city_health_get_global_sickness_level(void)
         }
     }
 
-    int plague_incoming;
-
-    if (max_sickness_level >= HIGH_SICKNESS_LEVEL) {
-        plague_incoming = 2;
-    } else if (max_sickness_level >= MEDIUM_SICKNESS_LEVEL) {
-        plague_incoming = 1;
-    } else {
-        plague_incoming = 0;
+    if (max_sickness_level < MAX_SICKNESS_LEVEL) {
+        for (building *b = building_first_of_type(BUILDING_BURNING_RUIN); b; b = b->next_of_type) {
+            if (b->state == BUILDING_STATE_IN_USE && b->has_plague) {
+                max_sickness_level = MAX_SICKNESS_LEVEL;
+                break;
+            }
+        }
     }
 
     if (building_number == 0) {
         return SICKNESS_LEVEL_LOW;
     }
 
-    int global_rating = building_sickness_level / building_number;
-    int global_sickness_level;
+    int global_sickness_level = SICKNESS_LEVEL_LOW;
 
-    if (global_rating < LOW_SICKNESS_LEVEL && !plague_incoming) {
-        global_sickness_level = SICKNESS_LEVEL_LOW;
-    } else if (global_rating < MEDIUM_SICKNESS_LEVEL && !plague_incoming) {
-        global_sickness_level = SICKNESS_LEVEL_MEDIUM;
-    } else if (global_rating < HIGH_SICKNESS_LEVEL && plague_incoming == 1) {
-        global_sickness_level = SICKNESS_LEVEL_HIGH;
-    } else {
+    if (max_sickness_level == MAX_SICKNESS_LEVEL) { // one or many houses is plagued
         global_sickness_level = SICKNESS_LEVEL_PLAGUE;
+    } else if (max_sickness_level >= HIGH_SICKNESS_LEVEL) { // one or many houses have sickness_level >= 90
+        global_sickness_level = SICKNESS_LEVEL_HIGH;
+    } else if (max_sickness_level >= MEDIUM_SICKNESS_LEVEL) { // one or many houses have sickness_level >= 60
+        global_sickness_level = SICKNESS_LEVEL_MEDIUM;
     }
 
     return global_sickness_level;

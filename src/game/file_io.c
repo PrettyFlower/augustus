@@ -49,6 +49,8 @@
 #include "sound/city.h"
 #include "widget/minimap.h"
 
+#include "zlib.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -58,7 +60,7 @@
 
 #define PIECE_SIZE_DYNAMIC 0
 
-static const int SAVE_GAME_CURRENT_VERSION = 0x88;
+static const int SAVE_GAME_CURRENT_VERSION = 0x8a;
 
 static const int SAVE_GAME_LAST_ORIGINAL_LIMITS_VERSION = 0x66;
 static const int SAVE_GAME_LAST_SMALLER_IMAGE_ID_VERSION = 0x76;
@@ -73,6 +75,8 @@ static const int SAVE_GAME_INCREASE_GRANARY_CAPACITY = 0x85;
 // static const int SAVE_GAME_ROADBLOCK_DATA_MOVED_FROM_SUBTYPE = 0x86; This define is unneeded for now
 static const int SAVE_GAME_LAST_ORIGINAL_TERRAIN_DATA_SIZE_VERSION = 0x86;
 static const int SAVE_GAME_LAST_CARAVANSERAI_WRONG_OFFSET = 0x87;
+static const int SAVE_GAME_LAST_ZIP_COMPRESSION = 0x88;
+static const int SAVE_GAME_LAST_ENEMY_ARMIES_BUFFER_BUG = 0x89;
 
 static char compress_buffer[COMPRESS_BUFFER_SIZE];
 
@@ -204,6 +208,7 @@ typedef struct {
         int building_list_large;
         int building_storages;
         int monument_deliveries;
+        int enemy_armies;
     } piece_sizes;
     struct {
         int culture1;
@@ -325,8 +330,8 @@ static void get_version_data(savegame_version_data *version_data, int version)
     version_data->piece_sizes.building_list_small = 1000 * multiplier;
     version_data->piece_sizes.building_list_large = 4000 * multiplier;
     version_data->piece_sizes.building_storages = 6400 * multiplier;
-    version_data->piece_sizes.monument_deliveries = version > SAVE_GAME_LAST_STATIC_MONUMENT_DELIVERIES_VERSION ?
-        PIECE_SIZE_DYNAMIC : 3200;
+    version_data->piece_sizes.monument_deliveries = version > SAVE_GAME_LAST_STATIC_MONUMENT_DELIVERIES_VERSION ? PIECE_SIZE_DYNAMIC : 3200;
+    version_data->piece_sizes.enemy_armies = version > SAVE_GAME_LAST_ENEMY_ARMIES_BUFFER_BUG ? (MAX_ENEMY_ARMIES * sizeof(int) * 9) : 900;
 
     version_data->building_counts.culture1 = 132 * count_multiplier;
     version_data->building_counts.culture2 = 32 * count_multiplier;
@@ -423,7 +428,7 @@ static void init_savegame_data(int version)
     state->building_extra_sequence = create_savegame_piece(4, 0);
     state->routing_counters = create_savegame_piece(16, 0);
     state->building_count_culture3 = create_savegame_piece(version_data.building_counts.culture3, 0);
-    state->enemy_armies = create_savegame_piece(900, 0);
+    state->enemy_armies = create_savegame_piece(version_data.piece_sizes.enemy_armies, 0);
     state->city_entry_exit_xy = create_savegame_piece(16, 0);
     state->last_invasion_id = create_savegame_piece(2, 0);
     state->building_extra_corrupt_houses = create_savegame_piece(8, 0);
@@ -812,22 +817,73 @@ static void write_int32(FILE *fp, int value)
     fwrite(&data, 1, 4, fp);
 }
 
-static int read_compressed_chunk(FILE *fp, void *buffer, int bytes_to_read)
+static int zlib_decompress(const void *input_buffer, int input_length, void *output_buffer, int output_length)
+{
+    z_stream strm;
+
+    strm.zalloc = Z_NULL;
+    strm.zfree = Z_NULL;
+    strm.opaque = Z_NULL;
+    strm.avail_in = 0;
+    strm.next_in = Z_NULL;
+    if (inflateInit(&strm) != Z_OK) {
+        return 0;
+    }
+
+    strm.avail_in = input_length;
+    strm.next_in = input_buffer;
+    strm.avail_out = output_length;
+    strm.next_out = output_buffer;
+    int result = inflate(&strm, Z_NO_FLUSH);
+    inflateEnd(&strm);
+    if (result != Z_STREAM_END || strm.avail_out != 0) {
+        return 0;
+    }
+    return 1;
+}
+
+static int read_compressed_chunk(FILE *fp, void *buffer, int bytes_to_read, int version)
 {
     if (bytes_to_read > COMPRESS_BUFFER_SIZE) {
         return 0;
     }
     int input_size = read_int32(fp);
-    if ((unsigned int) input_size == UNCOMPRESSED) {
-        if (fread(buffer, 1, bytes_to_read, fp) != bytes_to_read) {
+    if ((unsigned int)input_size == UNCOMPRESSED) {
+        return fread(buffer, 1, bytes_to_read, fp) == bytes_to_read;
+    } else {
+        if (fread(compress_buffer, 1, input_size, fp) != input_size) {
             return 0;
         }
-    } else {
-        if (fread(compress_buffer, 1, input_size, fp) != input_size
-            || !zip_decompress(compress_buffer, input_size, buffer, &bytes_to_read)) {
-            return 0;
+
+        if (version <= SAVE_GAME_LAST_ZIP_COMPRESSION) {
+            return zip_decompress(compress_buffer, input_size, buffer, &bytes_to_read);
+        } else {
+            return zlib_decompress(compress_buffer, input_size, buffer, bytes_to_read);
         }
     }
+}
+
+static int zlib_compress(const void *input_buffer, int input_length, void *output_buffer, int *output_length)
+{
+    z_stream strm;
+    strm.zalloc = Z_NULL;
+    strm.zfree = Z_NULL;
+    strm.opaque = Z_NULL;
+    if (deflateInit(&strm, Z_BEST_SPEED) != Z_OK) {
+        return 0;
+    }
+
+    strm.avail_in = input_length;
+    strm.next_in = input_buffer;
+    strm.avail_out = COMPRESS_BUFFER_SIZE;
+    strm.next_out = output_buffer;
+    int result = deflate(&strm, Z_FINISH);
+    deflateEnd(&strm);
+    if (result != Z_STREAM_END || strm.avail_in != 0) {
+        return 0;
+    }
+
+    *output_length = COMPRESS_BUFFER_SIZE - strm.avail_out;
     return 1;
 }
 
@@ -837,7 +893,7 @@ static int write_compressed_chunk(FILE *fp, const void *buffer, int bytes_to_wri
         return 0;
     }
     int output_size = COMPRESS_BUFFER_SIZE;
-    if (zip_compress(buffer, bytes_to_write, compress_buffer, &output_size)) {
+    if (zlib_compress(buffer, bytes_to_write, compress_buffer, &output_size)) {
         write_int32(fp, output_size);
         fwrite(compress_buffer, 1, output_size, fp);
     } else {
@@ -862,7 +918,7 @@ static int prepare_dynamic_piece(FILE *fp, file_piece *piece)
     return 1;
 }
 
-static int savegame_read_from_file(FILE *fp)
+static int savegame_read_from_file(FILE *fp, int version)
 {
     for (int i = 0; i < savegame_data.num_pieces; i++) {
         file_piece *piece = &savegame_data.pieces[i];
@@ -871,7 +927,7 @@ static int savegame_read_from_file(FILE *fp)
             continue;
         }
         if (piece->compressed) {
-            result = read_compressed_chunk(fp, piece->buf.data, piece->buf.size);
+            result = read_compressed_chunk(fp, piece->buf.data, piece->buf.size, version);
         } else {
             result = fread(piece->buf.data, 1, piece->buf.size, fp) == piece->buf.size;
         }
@@ -936,7 +992,7 @@ int game_file_io_read_saved_game(const char *filename, int offset)
         }
         log_info("Savegame version", 0, version);
         init_savegame_data(version);
-        result = savegame_read_from_file(fp);
+        result = savegame_read_from_file(fp, version);
     }
     file_close(fp);
     if (!result) {
@@ -1048,22 +1104,22 @@ static int savegame_read_file_info(FILE *fp, saved_game_info *info, int version)
         skip_piece(fp, version_data.piece_sizes.image_grid, 1);
     }
 
-    if (!read_compressed_chunk(fp, edge_grid.buf.data, edge_grid.buf.size)) {
+    if (!read_compressed_chunk(fp, edge_grid.buf.data, edge_grid.buf.size, version)) {
         return 0;
     }
 
-    if (!read_compressed_chunk(fp, building_grid.buf.data, building_grid.buf.size)) {
+    if (!read_compressed_chunk(fp, building_grid.buf.data, building_grid.buf.size, version)) {
         return 0;
     }
 
-    if (!read_compressed_chunk(fp, terrain_grid.buf.data, terrain_grid.buf.size)) {
+    if (!read_compressed_chunk(fp, terrain_grid.buf.data, terrain_grid.buf.size, version)) {
         return 0;
     }
 
     skip_piece(fp, 26244, 1);
     skip_piece(fp, 52488, 1);
 
-    if (!read_compressed_chunk(fp, bitfields_grid.buf.data, bitfields_grid.buf.size)) {
+    if (!read_compressed_chunk(fp, bitfields_grid.buf.data, bitfields_grid.buf.size, version)) {
         return 0;
     }
 
@@ -1084,7 +1140,7 @@ static int savegame_read_file_info(FILE *fp, saved_game_info *info, int version)
     skip_piece(fp, version_data.piece_sizes.formations, 1);
     skip_piece(fp, 12, 0);
 
-    if (!read_compressed_chunk(fp, city_data.buf.data, city_data.buf.size)) {
+    if (!read_compressed_chunk(fp, city_data.buf.data, city_data.buf.size, version)) {
         return 0;
     }
 
@@ -1092,7 +1148,7 @@ static int savegame_read_file_info(FILE *fp, saved_game_info *info, int version)
     skip_piece(fp, 64, 0);
     skip_piece(fp, 4, 0);
 
-    if (!prepare_dynamic_piece(fp, &buildings) || !read_compressed_chunk(fp, buildings.buf.data, buildings.buf.size)) {
+    if (!prepare_dynamic_piece(fp, &buildings) || !read_compressed_chunk(fp, buildings.buf.data, buildings.buf.size, version)) {
         return 0;
     }
 
