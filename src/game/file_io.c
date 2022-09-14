@@ -60,7 +60,7 @@
 
 #define PIECE_SIZE_DYNAMIC 0
 
-static const int SAVE_GAME_CURRENT_VERSION = 0x8a;
+static const int SAVE_GAME_CURRENT_VERSION = 0x8b;
 
 static const int SAVE_GAME_LAST_ORIGINAL_LIMITS_VERSION = 0x66;
 static const int SAVE_GAME_LAST_SMALLER_IMAGE_ID_VERSION = 0x76;
@@ -77,6 +77,7 @@ static const int SAVE_GAME_LAST_ORIGINAL_TERRAIN_DATA_SIZE_VERSION = 0x86;
 static const int SAVE_GAME_LAST_CARAVANSERAI_WRONG_OFFSET = 0x87;
 static const int SAVE_GAME_LAST_ZIP_COMPRESSION = 0x88;
 static const int SAVE_GAME_LAST_ENEMY_ARMIES_BUFFER_BUG = 0x89;
+static const int SAVE_GAME_LAST_NO_FORMATION_TARGET = 0x8a;
 
 static char compress_buffer[COMPRESS_BUFFER_SIZE];
 
@@ -498,7 +499,7 @@ static void savegame_load_from_state(savegame_state *state, int version)
     map_elevation_load_state(state->elevation_grid);
     figure_load_state(state->figures, state->figure_sequence, version > SAVE_GAME_LAST_STATIC_VERSION);
     figure_route_load_state(state->route_figures, state->route_paths);
-    formations_load_state(state->formations, state->formation_totals, version > SAVE_GAME_LAST_STATIC_VERSION);
+    formations_load_state(state->formations, state->formation_totals, version);
 
     city_data_load_state(state->city_data,
         state->city_faction,
