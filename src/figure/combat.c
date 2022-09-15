@@ -269,6 +269,17 @@ int figure_combat_get_target_for_enemy(int x, int y)
     return 0;
 }
 
+static int is_valid_missile_target(figure *f, formation *formation)
+{
+    if (figure_is_enemy(f) || is_attacking_native(f)) {
+        return 1;
+    }
+    if (figure_is_herd(f) && (f->type == FIGURE_WOLF || (formation->target_formation_id && formation->target_formation_id == f->formation_id))) {
+        return 1;
+    }
+    return 0;
+}
+
 int figure_combat_get_missile_target_for_soldier(figure *shooter, int max_distance, map_point *tile)
 {
     int x = shooter->x;
@@ -276,12 +287,13 @@ int figure_combat_get_missile_target_for_soldier(figure *shooter, int max_distan
 
     int min_distance = max_distance;
     figure *min_figure = 0;
+    formation *formation = formation_get(shooter->formation_id);
     for (int i = 1; i < figure_count(); i++) {
         figure *f = figure_get(i);
         if (figure_is_dead(f)) {
             continue;
         }
-        if (figure_is_enemy(f) || figure_is_herd(f) || is_attacking_native(f)) {
+        if (is_valid_missile_target(f, formation)) {
             int distance = calc_maximum_distance(x, y, f->x, f->y);
             if (distance < min_distance && figure_movement_can_launch_cross_country_missile(x, y, f->x, f->y)) {
                 min_distance = distance;
