@@ -21,7 +21,6 @@
 #define ORIGINAL_BUFFER_SIZE_PER_FORMATION 128
 #define CURRENT_BUFFER_SIZE_PER_FORMATION 132
 #define SAVE_GAME_LAST_STATIC_VERSION 0x78
-#define SAVE_GAME_LAST_NO_FORMATION_TARGET 0x8a
 
 static array(formation) formations;
 
@@ -701,6 +700,7 @@ void formations_save_state(buffer *buf, buffer *totals)
 {
     int buf_size = 4 + formations.size * CURRENT_BUFFER_SIZE_PER_FORMATION;
     uint8_t *buf_data = malloc(buf_size);
+    memset(buf_data, 0, buf_size);
     buffer_init(buf, buf_data, buf_size);
     buffer_write_i32(buf, CURRENT_BUFFER_SIZE_PER_FORMATION);
 
@@ -763,9 +763,9 @@ void formations_save_state(buffer *buf, buffer *totals)
         buffer_write_u8(buf, f->invasion_id);
         buffer_write_u8(buf, f->herd_wolf_spawn_delay);
         buffer_write_u8(buf, f->herd_direction);
-        buffer_skip(buf, 17);
-        buffer_write_i16(buf, f->invasion_sequence);
         buffer_write_i32(buf, f->target_formation_id);
+        buffer_skip(buf, 13);
+        buffer_write_i16(buf, f->invasion_sequence);
     }
     buffer_write_i32(totals, data.id_last_in_use);
     buffer_write_i32(totals, data.id_last_legion);
@@ -856,12 +856,9 @@ void formations_load_state(buffer *buf, buffer *totals, int version)
         f->invasion_id = buffer_read_u8(buf);
         f->herd_wolf_spawn_delay = buffer_read_u8(buf);
         f->herd_direction = buffer_read_u8(buf);
-        buffer_skip(buf, 17);
+        f->target_formation_id = buffer_read_i32(buf);
+        buffer_skip(buf, 13);
         f->invasion_sequence = buffer_read_i16(buf);
-
-        if (version > SAVE_GAME_LAST_NO_FORMATION_TARGET) {
-            f->target_formation_id = buffer_read_i32(buf);
-        }
 
         if (formation_buf_size > CURRENT_BUFFER_SIZE_PER_FORMATION) {
             buffer_skip(buf, formation_buf_size - CURRENT_BUFFER_SIZE_PER_FORMATION);
@@ -874,4 +871,12 @@ void formations_load_state(buffer *buf, buffer *totals, int version)
 
     // Reduce number of available formations to improve performance
     formations.size = highest_id_in_use + 1;
+
+    // old saves did not write formations to a zeroed out buffer, so check for invalid target_formation_ids
+    for (int i = 0; i < formations.size; i++) {
+        formation *f = array_item(formations, i);
+        if (f->target_formation_id < 0 || f->target_formation_id >= formations.size) {
+            f->target_formation_id = 0;
+        }
+    }
 }
