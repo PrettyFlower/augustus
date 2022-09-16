@@ -384,7 +384,6 @@ void figure_combat_attack_figure_at(figure *f, int grid_offset)
         }
 
         int opponent_category = figure_properties_for_type(opponent->type)->category;
-        int opponent_formation_id = opponent->formation_id;
         int attack = 0;
         if (opponent->state != FIGURE_STATE_ALIVE) {
             attack = 0;
@@ -408,7 +407,7 @@ void figure_combat_attack_figure_at(figure *f, int grid_offset)
             figure_category == FIGURE_CATEGORY_ARMED && 
             opponent_category == FIGURE_CATEGORY_ANIMAL && 
             formation->target_formation_id && 
-            formation->target_formation_id == opponent_formation_id
+            formation->target_formation_id == opponent->formation_id
         ) {
             attack = 1;
         } else if (figure_category == FIGURE_CATEGORY_HOSTILE && opponent_category == FIGURE_CATEGORY_ANIMAL) {
