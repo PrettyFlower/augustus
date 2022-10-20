@@ -2,13 +2,15 @@
 #define EMPIRE_CITY_H
 
 #include "core/buffer.h"
+#include "empire/type.h"
 #include "game/resource.h"
 
+#define EMPIRE_CITY_MAX_CITIES 41
 #define EMPIRE_CITY_MAX_TRADERS 3
 
 typedef struct {
     int in_use;
-    int type;
+    empire_city_type type;
     int name_id;
     int route_id;
     int is_open;

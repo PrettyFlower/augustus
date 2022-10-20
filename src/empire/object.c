@@ -10,20 +10,6 @@
 
 #define MAX_OBJECTS 200
 
-typedef struct {
-    int in_use;
-    int city_type;
-    int city_name_id;
-    int trade_route_open;
-    int trade_route_cost;
-    int city_sells_resource[10];
-    int city_buys_resource[8];
-    int trade40;
-    int trade25;
-    int trade15;
-    empire_object obj;
-} full_empire_object;
-
 static full_empire_object objects[MAX_OBJECTS];
 
 static int get_trade_amount_code(int index, int resource);
@@ -166,6 +152,11 @@ int empire_object_init_distant_battle_travel_months(int object_type)
         }
     }
     return month;
+}
+
+const full_empire_object *full_empire_object_get(int object_id)
+{
+    return &objects[object_id];
 }
 
 const empire_object *empire_object_get(int object_id)
