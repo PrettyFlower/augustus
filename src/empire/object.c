@@ -8,6 +8,8 @@
 #include "game/animation.h"
 #include "scenario/empire.h"
 
+#include <string.h>
+
 #define MAX_OBJECTS 200
 
 static full_empire_object objects[MAX_OBJECTS];
@@ -99,6 +101,7 @@ void empire_object_init_cities(void)
         city->in_use = 1;
         city->type = obj->city_type;
         city->name_id = obj->city_name_id;
+        strcpy(city->city_custom_name, obj->city_custom_name);
         if (obj->obj.trade_route_id < 0) {
             obj->obj.trade_route_id = 0;
         }
@@ -131,6 +134,11 @@ void empire_object_init_cities(void)
                 case 2: amount = 25; break;
                 case 3: amount = 40; break;
                 default: amount = 0; break;
+            }
+            if (amount == 0 && obj->city_buys_custom[resource]) {
+                amount = obj->city_buys_custom[resource];
+            } else if (amount == 0 && obj->city_sells_custom[resource]) {
+                amount = obj->city_sells_custom[resource];
             }
             trade_route_init(city->route_id, resource, amount);
         }
@@ -260,6 +268,9 @@ int empire_object_city_buys_resource(int object_id, int resource)
             return 1;
         }
     }
+    if (object->city_buys_custom[resource]) {
+        return 1;
+    }
     return 0;
 }
 
@@ -270,6 +281,9 @@ int empire_object_city_sells_resource(int object_id, int resource)
         if (object->city_sells_resource[i] == resource) {
             return 1;
         }
+    }
+    if (object->city_sells_custom[resource]) {
+        return 1;
     }
     return 0;
 }

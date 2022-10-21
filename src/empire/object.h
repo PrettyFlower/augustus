@@ -3,20 +3,7 @@
 
 #include "core/buffer.h"
 #include "empire/type.h"
-
-typedef struct {
-    int in_use;
-    empire_city_type city_type;
-    int city_name_id;
-    int trade_route_open;
-    int trade_route_cost;
-    int city_sells_resource[10];
-    int city_buys_resource[8];
-    int trade40;
-    int trade25;
-    int trade15;
-    empire_object obj;
-} full_empire_object;
+#include "game/resource.h"
 
 typedef struct {
     int id;
@@ -37,6 +24,23 @@ typedef struct {
     int invasion_path_id;
     int invasion_years;
 } empire_object;
+
+typedef struct {
+    int in_use;
+    empire_city_type city_type;
+    int city_name_id;
+    uint8_t city_custom_name[50];
+    int trade_route_open;
+    int trade_route_cost;
+    int city_sells_resource[10];
+    int city_buys_resource[8];
+    int city_sells_custom[RESOURCE_MAX];
+    int city_buys_custom[RESOURCE_MAX];
+    int trade40;
+    int trade25;
+    int trade15;
+    empire_object obj;
+} full_empire_object;
 
 void empire_object_load(buffer *buf);
 

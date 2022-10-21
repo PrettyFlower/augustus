@@ -11,6 +11,7 @@
 #include "empire/city.h"
 #include "empire/object.h"
 #include "empire/trade_route.h"
+#include "empire/empire_xml.h"
 
 #include <string.h>
 
@@ -33,6 +34,9 @@ static struct {
 
 void empire_load(int is_custom_scenario, int empire_id)
 {
+    empire_xml_parse_empire("test_empire.xml");
+    return;
+
     char raw_data[EMPIRE_DATA_SIZE];
     const char *filename = is_custom_scenario ? "c32.emp" : "c3.emp";
 
