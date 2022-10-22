@@ -16,16 +16,19 @@
 #define XML_BUFFER_SIZE 4096
 
 typedef enum {
-    READ_NONE = -1,
-    BUYS = 1,
-    SELLS = 2
-} city_list_item;
+    LIST_NONE = -1,
+    LIST_BUYS = 1,
+    LIST_SELLS = 2
+} city_resource_list;
 
 static struct {
     int success;
     int next_empire_obj_id;
     int current_city_id;
-    city_list_item current_read_item;
+    city_resource_list current_city_resource_list;
+    int current_invasion_path_id;
+    int invasion_path_ids[10];
+    int invasion_path_idx;
 } data;
 
 static int count_xml_attributes(const char **attributes)
@@ -39,9 +42,9 @@ static int count_xml_attributes(const char **attributes)
 
 static void xml_parse_city(int num_attrs, const char **attributes)
 {
-    if (data.next_empire_obj_id >= EMPIRE_CITY_MAX_CITIES) {
+    if (data.next_empire_obj_id + 1 >= MAX_EMPIRE_OBJECTS) {
         data.success = 0;
-        log_error("Too many cities", 0, data.next_empire_obj_id);
+        log_error("Too many objects", 0, data.next_empire_obj_id);
         return;
     }
 
@@ -133,7 +136,7 @@ static void xml_parse_resource(int num_attrs, const char **attributes)
         data.success = 0;
         log_error("No active city when parsing resource", 0, 0);
         return;
-    } else if (data.current_read_item == 0) {
+    } else if (data.current_city_resource_list == 0) {
         data.success = 0;
         log_error("Resource not in buy or sell tag", 0, 0);
         return;
@@ -162,10 +165,50 @@ static void xml_parse_resource(int num_attrs, const char **attributes)
         return;
     }
 
-    if (data.current_read_item == BUYS) {
+    if (data.current_city_resource_list == LIST_BUYS) {
         city_obj->city_buys_custom[resource] = amount;
-    } else if (data.current_read_item == SELLS) {
+    } else if (data.current_city_resource_list == LIST_SELLS) {
         city_obj->city_sells_custom[resource] = amount;
+    }
+}
+
+static void xml_parse_invasion_path()
+{
+    data.current_invasion_path_id++;
+}
+
+static void xml_parse_battle(int num_attrs, const char **attributes)
+{
+    if (data.next_empire_obj_id >= MAX_EMPIRE_OBJECTS) {
+        data.success = 0;
+        log_error("Too many objects", 0, data.next_empire_obj_id);
+        return;
+    } else if (!data.current_invasion_path_id) {
+        data.success = 0;
+        log_error("Battle not in path tag", 0, 0);
+        return;
+    } else if (data.invasion_path_idx >= sizeof(data.invasion_path_ids) / sizeof(data.invasion_path_ids[0])) {
+        data.success = 0;
+        log_error("Invasion path too long", 0, 0);
+    }
+
+    full_empire_object *battle_obj = full_empire_object_get(data.next_empire_obj_id);
+    battle_obj->obj.id = data.next_empire_obj_id;
+    data.next_empire_obj_id++;
+    battle_obj->in_use = 1;
+    battle_obj->obj.type = EMPIRE_OBJECT_BATTLE_ICON;
+    battle_obj->obj.invasion_path_id = data.current_invasion_path_id;
+    battle_obj->obj.image_id = image_group(GROUP_EMPIRE_BATTLE);
+    data.invasion_path_ids[data.invasion_path_idx] = battle_obj->obj.id;
+    data.invasion_path_idx++;
+    for (int i = 0; i < num_attrs; i += 2) {
+        char *attr_name = attributes[i];
+        char *attr_val = attributes[i + 1];
+        if (strcmp(attr_name, "x") == 0) {
+            battle_obj->obj.x = string_to_int(attr_val);
+        } else if (strcmp(attr_name, "y") == 0) {
+            battle_obj->obj.y = string_to_int(attr_val);
+        }
     }
 }
 
@@ -183,11 +226,15 @@ static void XMLCALL xml_start_element(void *unused, const char *name, const char
     if (strcmp(name, "city") == 0) {
         xml_parse_city(num_attrs, attributes);
     } else if (strcmp(name, "sells") == 0) {
-        data.current_read_item = SELLS;
+        data.current_city_resource_list = LIST_SELLS;
     } else if (strcmp(name, "buys") == 0) {
-        data.current_read_item = BUYS;
+        data.current_city_resource_list = LIST_BUYS;
     } else if (strcmp(name, "resource") == 0) {
         xml_parse_resource(num_attrs, attributes);
+    } else if (strcmp(name, "path") == 0) {
+        xml_parse_invasion_path();
+    } else if (strcmp(name, "battle") == 0) {
+        xml_parse_battle(num_attrs, attributes);
     }
 }
 
@@ -199,9 +246,17 @@ static void XMLCALL xml_end_element(void *unused, const char *name)
 
     if (strcmp(name, "city") == 0) {
         data.current_city_id = -1;
-        data.current_read_item = READ_NONE;
+        data.current_city_resource_list = LIST_NONE;
     } else if (strcmp(name, "sells") == 0 || strcmp(name, "buys") == 0) {
-        data.current_read_item = READ_NONE;
+        data.current_city_resource_list = LIST_NONE;
+    } else if (strcmp(name, "path") == 0) {
+        for (int i = 0; i < data.invasion_path_idx; i++) {
+            int idx = data.invasion_path_idx - i - 1;
+            full_empire_object *battle = full_empire_object_get(data.invasion_path_ids[idx]);
+            battle->obj.invasion_years = i + 1;
+        }
+        memset(data.invasion_path_ids, 0, sizeof(data.invasion_path_ids));
+        data.invasion_path_idx = 0;
     }
 }
 
@@ -210,7 +265,10 @@ static void reset_data(void)
     data.success = 1;
     data.next_empire_obj_id = 0;
     data.current_city_id = -1;
-    data.current_read_item = READ_NONE;
+    data.current_city_resource_list = LIST_NONE;
+    data.current_invasion_path_id = 0;
+    memset(data.invasion_path_ids, 0, sizeof(data.invasion_path_ids));
+    data.invasion_path_idx = 0;
 }
 
 int empire_xml_parse_empire(const char *file_name)
