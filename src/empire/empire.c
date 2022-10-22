@@ -34,8 +34,10 @@ static struct {
 
 void empire_load(int is_custom_scenario, int empire_id)
 {
-    empire_xml_parse_empire("test_empire.xml");
-    return;
+    if (/*empire_id == SCENARIO_CUSTOM_EMPIRE*/ 1) {
+        empire_xml_parse_empire("test_empire.xml");
+        return;
+    }
 
     char raw_data[EMPIRE_DATA_SIZE];
     const char *filename = is_custom_scenario ? "c32.emp" : "c3.emp";

@@ -30,6 +30,8 @@
 #include "window/trade_opened.h"
 #include "window/trade_prices.h"
 
+#include <math.h>
+
 #define MAX_WIDTH 2032
 #define MAX_HEIGHT 1136
 
@@ -324,11 +326,33 @@ static void draw_background(void)
     }
 }
 
+static void draw_trade_dots(const empire_object *trade_route)
+{
+    empire_object *our_city = empire_object_get_our_city();
+    empire_object *trade_city = empire_object_get_trade_city(trade_route->trade_route_id);
+
+    int x_diff = trade_city->x - our_city->x;
+    int y_diff = trade_city->y - our_city->y;
+    double dist = sqrt(x_diff * x_diff + y_diff * y_diff);
+    double x_factor = x_diff / dist;
+    double y_factor = y_diff / dist;
+    int num_dots = dist / 15;
+    int image_id = trade_route->type == EMPIRE_OBJECT_LAND_TRADE_ROUTE ? assets_get_image_id("UI", "LandRouteDot") : assets_get_image_id("UI", "SeaRouteDot");
+    for (int j = 0; j < num_dots; j++) {
+        int x = x_factor * j * 15 + our_city->x + 32;
+        int y = y_factor * j * 15 + our_city->y + 32;
+        image_draw(image_id, data.x_draw_offset + x, data.y_draw_offset + y, COLOR_MASK_NONE, SCALE_NONE);
+    }
+}
+
 static void draw_empire_object(const empire_object *obj)
 {
     if (obj->type == EMPIRE_OBJECT_LAND_TRADE_ROUTE || obj->type == EMPIRE_OBJECT_SEA_TRADE_ROUTE) {
         if (!empire_city_is_trade_route_open(obj->trade_route_id)) {
             return;
+        }
+        if (/*scenario_empire_id() == SCENARIO_CUSTOM_EMPIRE*/ 1) {
+            draw_trade_dots(obj);
         }
     }
     int x, y, image_id;

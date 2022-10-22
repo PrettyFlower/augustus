@@ -183,6 +183,19 @@ const empire_object *empire_object_get_our_city(void)
     return 0;
 }
 
+const empire_object *empire_object_get_trade_city(int trade_route_id)
+{
+    for (int i = 0; i < MAX_EMPIRE_OBJECTS; i++) {
+        if (objects[i].in_use) {
+            const empire_object *obj = &objects[i].obj;
+            if (obj->type == EMPIRE_OBJECT_CITY && obj->trade_route_id == trade_route_id) {
+                return obj;
+            }
+        }
+    }
+    return 0;
+}
+
 void empire_object_foreach(void (*callback)(const empire_object *))
 {
     for (int i = 0; i < MAX_EMPIRE_OBJECTS; i++) {

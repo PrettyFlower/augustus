@@ -10,7 +10,6 @@
 
 #include "expat.h"
 
-#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -264,29 +263,6 @@ int empire_xml_parse_empire(const char *file_name)
         }
         trade_route->x = (our_city->x + trade_city->obj.x) / 2;
         trade_route->y = (our_city->y + trade_city->obj.y) / 2 + 16;
-
-        int x_diff = trade_city->obj.x - our_city->x;
-        int y_diff = trade_city->obj.y - our_city->y;
-        double dist = sqrt(x_diff * x_diff + y_diff * y_diff);
-        double x_factor = x_diff / dist;
-        double y_factor = y_diff / dist;
-        int num_dots = dist / 15;
-        int trade_image_id = trade_route->type == EMPIRE_OBJECT_LAND_TRADE_ROUTE ? assets_get_image_id("UI", "LandRouteDot") : assets_get_image_id("UI", "SeaRouteDot");
-        for (int j = 0; j < num_dots; j++) {
-            if (data.next_empire_obj_id >= MAX_EMPIRE_OBJECTS) {
-                // NO MORE DOTS FOR YOU!!!
-                break;
-            }
-            full_empire_object *dot = full_empire_object_get(data.next_empire_obj_id);
-            dot->obj.id = data.next_empire_obj_id;
-            data.next_empire_obj_id++;
-            dot->in_use = 1;
-            dot->obj.trade_route_id = trade_route->trade_route_id;
-            dot->obj.type = trade_route->type;
-            dot->obj.image_id = trade_image_id;
-            dot->obj.x = x_factor * j * 15 + our_city->x + 32;
-            dot->obj.y = y_factor * j * 15 + our_city->y + 32;
-        }
     }
 
     return data.success;
