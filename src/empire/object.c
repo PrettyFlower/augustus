@@ -10,16 +10,14 @@
 
 #include <string.h>
 
-#define MAX_OBJECTS 200
-
-static full_empire_object objects[MAX_OBJECTS];
+static full_empire_object objects[MAX_EMPIRE_OBJECTS];
 
 static int get_trade_amount_code(int index, int resource);
 
 static void fix_image_ids(void)
 {
     int image_id = 0;
-    for (int i = 0; i < MAX_OBJECTS; i++) {
+    for (int i = 0; i < MAX_EMPIRE_OBJECTS; i++) {
         if (objects[i].in_use
             && objects[i].obj.type == EMPIRE_OBJECT_CITY
             && objects[i].city_type == EMPIRE_CITY_OURS) {
@@ -30,7 +28,7 @@ static void fix_image_ids(void)
     if (image_id > 0 && image_id != image_group(GROUP_EMPIRE_CITY)) {
         // empire map uses old version of graphics: increase every graphic id
         int offset = image_group(GROUP_EMPIRE_CITY) - image_id;
-        for (int i = 0; i < MAX_OBJECTS; i++) {
+        for (int i = 0; i < MAX_EMPIRE_OBJECTS; i++) {
             if (!objects[i].in_use) {
                 continue;
             }
@@ -46,7 +44,7 @@ static void fix_image_ids(void)
 
 void empire_object_load(buffer *buf)
 {
-    for (int i = 0; i < MAX_OBJECTS; i++) {
+    for (int i = 0; i < MAX_EMPIRE_OBJECTS; i++) {
         full_empire_object *full = &objects[i];
         empire_object *obj = &full->obj;
         obj->id = i;
@@ -92,7 +90,7 @@ void empire_object_init_cities(void)
 {
     empire_city_clear_all();
     int route_index = 1;
-    for (int i = 0; i < MAX_OBJECTS; i++) {
+    for (int i = 0; i < MAX_EMPIRE_OBJECTS; i++) {
         if (!objects[i].in_use || objects[i].obj.type != EMPIRE_OBJECT_CITY) {
             continue;
         }
@@ -153,7 +151,7 @@ void empire_object_init_cities(void)
 int empire_object_init_distant_battle_travel_months(int object_type)
 {
     int month = 0;
-    for (int i = 0; i < MAX_OBJECTS; i++) {
+    for (int i = 0; i < MAX_EMPIRE_OBJECTS; i++) {
         if (objects[i].in_use && objects[i].obj.type == object_type) {
             month++;
             objects[i].obj.distant_battle_travel_months = month;
@@ -174,7 +172,7 @@ const empire_object *empire_object_get(int object_id)
 
 const empire_object *empire_object_get_our_city(void)
 {
-    for (int i = 0; i < MAX_OBJECTS; i++) {
+    for (int i = 0; i < MAX_EMPIRE_OBJECTS; i++) {
         if (objects[i].in_use) {
             const empire_object *obj = &objects[i].obj;
             if (obj->type == EMPIRE_OBJECT_CITY && objects[i].city_type == EMPIRE_CITY_OURS) {
@@ -187,7 +185,7 @@ const empire_object *empire_object_get_our_city(void)
 
 void empire_object_foreach(void (*callback)(const empire_object *))
 {
-    for (int i = 0; i < MAX_OBJECTS; i++) {
+    for (int i = 0; i < MAX_EMPIRE_OBJECTS; i++) {
         if (objects[i].in_use) {
             callback(&objects[i].obj);
         }
@@ -196,7 +194,7 @@ void empire_object_foreach(void (*callback)(const empire_object *))
 
 const empire_object *empire_object_get_battle_icon(int path_id, int year)
 {
-    for (int i = 0; i < MAX_OBJECTS; i++) {
+    for (int i = 0; i < MAX_EMPIRE_OBJECTS; i++) {
         if (objects[i].in_use) {
             empire_object *obj = &objects[i].obj;
             if (obj->type == EMPIRE_OBJECT_BATTLE_ICON &&
@@ -211,7 +209,7 @@ const empire_object *empire_object_get_battle_icon(int path_id, int year)
 int empire_object_get_max_invasion_path(void)
 {
     int max_path = 0;
-    for (int i = 0; i < MAX_OBJECTS; i++) {
+    for (int i = 0; i < MAX_EMPIRE_OBJECTS; i++) {
         if (objects[i].in_use && objects[i].obj.type == EMPIRE_OBJECT_BATTLE_ICON) {
             if (objects[i].obj.invasion_path_id > max_path) {
                 max_path = objects[i].obj.invasion_path_id;
@@ -225,7 +223,7 @@ int empire_object_get_closest(int x, int y)
 {
     int min_dist = 10000;
     int min_obj_id = 0;
-    for (int i = 0; i < MAX_OBJECTS && objects[i].in_use; i++) {
+    for (int i = 0; i < MAX_EMPIRE_OBJECTS && objects[i].in_use; i++) {
         const empire_object *obj = &objects[i].obj;
         int obj_x, obj_y;
         if (scenario_empire_is_expanded()) {
@@ -327,7 +325,7 @@ static int get_trade_amount_code(int index, int resource)
 
 int is_sea_trade_route(int route_id)
 {
-    for (int i = 0; i < MAX_OBJECTS; i++) {
+    for (int i = 0; i < MAX_EMPIRE_OBJECTS; i++) {
         if (objects[i].in_use && objects[i].obj.trade_route_id == route_id) {
             if (objects[i].obj.type == EMPIRE_OBJECT_SEA_TRADE_ROUTE) {
                 return 1;

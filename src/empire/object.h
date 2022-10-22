@@ -5,6 +5,8 @@
 #include "empire/type.h"
 #include "game/resource.h"
 
+#define MAX_EMPIRE_OBJECTS 200
+
 typedef struct {
     int id;
     empire_object_type type;

@@ -2,6 +2,7 @@
 
 #include "assets/assets.h"
 #include "core/file.h"
+#include "core/image_group.h"
 #include "core/log.h"
 #include "core/string.h"
 #include "empire/city.h"
@@ -9,6 +10,7 @@
 
 #include "expat.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -50,10 +52,10 @@ static void xml_parse_city(int num_attrs, const char **attributes)
     data.next_empire_obj_id++;
     city_obj->in_use = 1;
     city_obj->obj.type = EMPIRE_OBJECT_CITY;
-    city_obj->city_type = EMPIRE_CITY_FUTURE_TRADE;
+    city_obj->city_type = EMPIRE_CITY_TRADE;
     city_obj->obj.trade_route_id = data.next_empire_obj_id;
     city_obj->trade_route_cost = 500;
-    city_obj->obj.image_id = 8010;
+    city_obj->obj.image_id = image_group(GROUP_EMPIRE_CITY_TRADE);
     city_obj->obj.width = 44;
     city_obj->obj.height = 36;
     data.next_empire_obj_id++;
@@ -63,7 +65,7 @@ static void xml_parse_city(int num_attrs, const char **attributes)
     route_obj->in_use = 1;
     route_obj->obj.type = EMPIRE_OBJECT_LAND_TRADE_ROUTE;
     route_obj->obj.trade_route_id = city_obj->obj.trade_route_id;
-    route_obj->obj.image_id = 8072;
+    route_obj->obj.image_id = image_group(GROUP_EMPIRE_TRADE_ROUTE_TYPE) + 1;
 
     for (int i = 0; i < num_attrs; i += 2) {
         char *attr_name = attributes[i];
@@ -76,12 +78,12 @@ static void xml_parse_city(int num_attrs, const char **attributes)
             city_obj->obj.y = string_to_int(attr_val);
         } else if (strcmp(attr_name, "ours") == 0 && strcmp(attr_val, "true") == 0) {
             city_obj->city_type = EMPIRE_CITY_OURS;
-            city_obj->obj.image_id = 8003;
+            city_obj->obj.image_id = image_group(GROUP_EMPIRE_CITY);
         } else if (strcmp(attr_name, "trade_route_cost") == 0) {
             city_obj->trade_route_cost = string_to_int(attr_val);
         } else if (strcmp(attr_name, "trade_by_sea") == 0) {
             route_obj->obj.type = EMPIRE_OBJECT_SEA_TRADE_ROUTE;
-            route_obj->obj.image_id = 8071;
+            route_obj->obj.image_id--;
         } else if (strcmp(attr_name, "distant") == 0 && strcmp(attr_val, "true") == 0) {
             city_obj->city_type = EMPIRE_CITY_DISTANT_ROMAN;
             city_obj->obj.image_id = assets_get_image_id("UI", "Village");
@@ -185,6 +187,8 @@ static void XMLCALL xml_start_element(void *unused, const char *name, const char
         data.current_read_item = SELLS;
     } else if (strcmp(name, "buys") == 0) {
         data.current_read_item = BUYS;
+    } else if (strcmp(name, "resource") == 0) {
+        xml_parse_resource(num_attrs, attributes);
     }
 }
 
@@ -239,6 +243,51 @@ int empire_xml_parse_empire(const char *file_name)
 
     XML_ParserFree(parser);
     file_close(file);
+
+    empire_object *our_city = empire_object_get_our_city();
+    if (!our_city) {
+        log_error("No home city specified", 0, 0);
+        return 0;
+    }
+
+    for (int i = 0; i < MAX_EMPIRE_OBJECTS; i++) {
+        full_empire_object *trade_city = full_empire_object_get(i);
+        if (!trade_city->in_use) {
+            break;
+        }
+        if (trade_city->obj.type != EMPIRE_OBJECT_CITY || trade_city->city_type == EMPIRE_CITY_OURS || !trade_city->obj.trade_route_id) {
+            continue;
+        }
+        empire_object *trade_route = empire_object_get(trade_city->obj.trade_route_id);
+        if (!trade_route) {
+            continue;
+        }
+        trade_route->x = (our_city->x + trade_city->obj.x) / 2;
+        trade_route->y = (our_city->y + trade_city->obj.y) / 2 + 16;
+
+        int x_diff = trade_city->obj.x - our_city->x;
+        int y_diff = trade_city->obj.y - our_city->y;
+        double dist = sqrt(x_diff * x_diff + y_diff * y_diff);
+        double x_factor = x_diff / dist;
+        double y_factor = y_diff / dist;
+        int num_dots = dist / 15;
+        int trade_image_id = trade_route->type == EMPIRE_OBJECT_LAND_TRADE_ROUTE ? assets_get_image_id("UI", "LandRouteDot") : assets_get_image_id("UI", "SeaRouteDot");
+        for (int j = 0; j < num_dots; j++) {
+            if (data.next_empire_obj_id >= MAX_EMPIRE_OBJECTS) {
+                // NO MORE DOTS FOR YOU!!!
+                break;
+            }
+            full_empire_object *dot = full_empire_object_get(data.next_empire_obj_id);
+            dot->obj.id = data.next_empire_obj_id;
+            data.next_empire_obj_id++;
+            dot->in_use = 1;
+            dot->obj.trade_route_id = trade_route->trade_route_id;
+            dot->obj.type = trade_route->type;
+            dot->obj.image_id = trade_image_id;
+            dot->obj.x = x_factor * j * 15 + our_city->x + 32;
+            dot->obj.y = y_factor * j * 15 + our_city->y + 32;
+        }
+    }
 
     return data.success;
 }

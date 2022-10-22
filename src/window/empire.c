@@ -144,16 +144,12 @@ static void draw_trade_resource(resource_type resource, int trade_max, int x_off
         button_border_draw(x_offset - 2, y_offset - 2, 101 + 4, 30, 1);
     }
 
-    switch (trade_max) {
-        case 15:
-            image_draw(image_group(GROUP_TRADE_AMOUNT), x_offset + 21, y_offset - 1, COLOR_MASK_NONE, SCALE_NONE);
-            break;
-        case 25:
-            image_draw(image_group(GROUP_TRADE_AMOUNT) + 1, x_offset + 17, y_offset - 1, COLOR_MASK_NONE, SCALE_NONE);
-            break;
-        case 40:
-            image_draw(image_group(GROUP_TRADE_AMOUNT) + 2, x_offset + 13, y_offset - 1, COLOR_MASK_NONE, SCALE_NONE);
-            break;
+    if (trade_max < 20) {
+        image_draw(image_group(GROUP_TRADE_AMOUNT), x_offset + 21, y_offset - 1, COLOR_MASK_NONE, SCALE_NONE);
+    } else if (trade_max < 32) {
+        image_draw(image_group(GROUP_TRADE_AMOUNT) + 1, x_offset + 17, y_offset - 1, COLOR_MASK_NONE, SCALE_NONE);
+    } else {
+        image_draw(image_group(GROUP_TRADE_AMOUNT) + 2, x_offset + 13, y_offset - 1, COLOR_MASK_NONE, SCALE_NONE);
     }
 }
 
