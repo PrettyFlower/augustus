@@ -207,8 +207,8 @@ static void draw_city_info(const empire_city *city)
 {
     int x_offset = data.x_min + 28;
     int y_offset = data.y_max - 85;
-
-    int width = lang_text_draw(21, city->name_id, x_offset, y_offset, FONT_NORMAL_WHITE);
+    const uint8_t *city_name = empire_city_get_name(city);
+    int width = text_draw(city_name, x_offset, y_offset, FONT_NORMAL_WHITE, 0);
 
     switch (city->type) {
         case EMPIRE_CITY_DISTANT_ROMAN:

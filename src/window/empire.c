@@ -441,11 +441,8 @@ static void draw_city_name(const empire_city *city)
     if (city) {
         int x_offset = (data.x_min + data.x_max - 332) / 2 + 64;
         int y_offset = data.y_max - 118;
-        if (city->name_id == 0) {
-            text_draw_centered(city->city_custom_name, x_offset, y_offset, 268, FONT_LARGE_BLACK, 0);
-        } else {
-            lang_text_draw_centered(21, city->name_id, x_offset, y_offset, 268, FONT_LARGE_BLACK);
-        }
+        const uint8_t *city_name = empire_city_get_name(city);
+        text_draw_centered(city_name, x_offset, y_offset, 268, FONT_LARGE_BLACK, 0);
     }
 }
 

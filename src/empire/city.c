@@ -1,6 +1,7 @@
 #include "city.h"
 
 #include "core/calc.h"
+#include "core/lang.h"
 #include "city/buildings.h"
 #include "city/finance.h"
 #include "city/map.h"
@@ -363,6 +364,15 @@ int empire_unlock_all_resources(void)
         }
 	}
 	return 0;
+}
+
+uint8_t *empire_city_get_name(empire_city *city)
+{
+    const uint8_t *str;
+    if (string_length(city->city_custom_name)) {
+        return city->city_custom_name;
+    }
+    return lang_get_string(21, city->name_id);
 }
 
 void empire_city_save_state(buffer *buf)

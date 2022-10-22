@@ -70,7 +70,8 @@ static void init(int id)
     for (int i = 1; i < MAX_ROUTES; i++) {
         empire_city *city = empire_city_get(empire_city_get_for_trade_route(i));
         if (city && (city->type == EMPIRE_CITY_TRADE || city->type == EMPIRE_CITY_FUTURE_TRADE)) {
-            create_display_name(i, lang_get_string(21, city->name_id));
+            const uint8_t *city_name = empire_city_get_name(city);
+            create_display_name(i, city_name);
 
             data.route_ids[data.num_routes] = i;
             data.route_names[data.num_routes] = route_display_names[i];

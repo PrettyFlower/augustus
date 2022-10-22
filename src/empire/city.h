@@ -74,6 +74,8 @@ void empire_city_remove_trader(int city_id, int figure_id);
 
 int empire_unlock_all_resources(void);
 
+uint8_t *empire_city_get_name(empire_city *city);
+
 void empire_city_save_state(buffer *buf);
 
 void empire_city_load_state(buffer *buf);
