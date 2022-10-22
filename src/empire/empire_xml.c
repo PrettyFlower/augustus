@@ -23,6 +23,7 @@ typedef enum {
 
 static struct {
     int success;
+    int version;
     int next_empire_obj_id;
     int current_city_id;
     city_resource_list current_city_resource_list;
@@ -38,6 +39,23 @@ static int count_xml_attributes(const char **attributes)
         ++total;
     }
     return total;
+}
+
+static void xml_parse_empire(int num_attrs, const char **attributes)
+{
+    for (int i = 0; i < num_attrs; i += 2) {
+        char *attr_name = attributes[i];
+        char *attr_val = attributes[i + 1];
+        if (strcmp(attr_name, "version") == 0) {
+            data.version = string_to_int(attr_val);
+        }
+    }
+
+    if (!data.version) {
+        data.success = 0;
+        log_error("No version set", 0, 0);
+        return;
+    }
 }
 
 static void xml_parse_city(int num_attrs, const char **attributes)
@@ -221,6 +239,14 @@ static void XMLCALL xml_start_element(void *unused, const char *name, const char
     if (num_attrs % 2) {
         data.success = 0;
         log_error("Unexpected number of attributes", name, num_attrs);
+        return;
+    }
+    if (strcmp(name, "empire") == 0) {
+        xml_parse_empire(num_attrs, attributes);
+    }
+    if (!data.version) {
+        data.success = 0;
+        log_error("Not in empire tag", 0, 0);
         return;
     }
     if (strcmp(name, "city") == 0) {
