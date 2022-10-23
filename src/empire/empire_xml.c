@@ -99,7 +99,6 @@ static void xml_parse_city(int num_attrs, const char **attributes)
         } else if (strcmp(attr_name, "ours") == 0 && strcmp(attr_val, "true") == 0) {
             city_obj->city_type = EMPIRE_CITY_OURS;
             city_obj->obj.image_id = image_group(GROUP_EMPIRE_CITY);
-            route_obj->in_use = 0;
         } else if (strcmp(attr_name, "trade_route_cost") == 0) {
             city_obj->trade_route_cost = string_to_int(attr_val);
         } else if (strcmp(attr_name, "trade_by_sea") == 0) {
@@ -109,6 +108,12 @@ static void xml_parse_city(int num_attrs, const char **attributes)
             city_obj->city_type = EMPIRE_CITY_DISTANT_ROMAN;
             city_obj->obj.image_id = assets_get_image_id("UI", "Village");
         }
+    }
+
+    if (city_obj->city_type == EMPIRE_CITY_OURS) {
+        memset(route_obj, 0, sizeof(full_empire_object));
+        city_obj->obj.trade_route_id = 0;
+        data.next_empire_obj_id--;
     }
 }
 
@@ -353,6 +358,8 @@ int empire_xml_parse_empire(const char *file_name)
         trade_route->x = (our_city->x + trade_city->obj.x) / 2;
         trade_route->y = (our_city->y + trade_city->obj.y) / 2 + 16;
     }
+
+    empire_object_init_cities();
 
     return data.success;
 }

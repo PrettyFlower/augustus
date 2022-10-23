@@ -2,6 +2,7 @@
 
 #include "core/calc.h"
 #include "core/lang.h"
+#include "core/string.h"
 #include "city/buildings.h"
 #include "city/finance.h"
 #include "city/map.h"

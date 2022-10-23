@@ -197,19 +197,12 @@ static void draw_resource(resource_type resource, int trade_max, int x_offset, i
     int image_id = resource + image_group(GROUP_EDITOR_EMPIRE_RESOURCES);
     int resource_offset = resource_image_offset(resource, RESOURCE_IMAGE_ICON);
     image_draw(image_id + resource_offset, x_offset + 1, y_offset + 1, COLOR_MASK_NONE, SCALE_NONE);
-    switch (trade_max) {
-        case 15:
-            image_draw(image_group(GROUP_EDITOR_TRADE_AMOUNT), x_offset + 21, y_offset - 1,
-                COLOR_MASK_NONE, SCALE_NONE);
-            break;
-        case 25:
-            image_draw(image_group(GROUP_EDITOR_TRADE_AMOUNT) + 1, x_offset + 17, y_offset - 1,
-                COLOR_MASK_NONE, SCALE_NONE);
-            break;
-        case 40:
-            image_draw(image_group(GROUP_EDITOR_TRADE_AMOUNT) + 2, x_offset + 13, y_offset - 1,
-                COLOR_MASK_NONE, SCALE_NONE);
-            break;
+    if (trade_max < 20) {
+        image_draw(image_group(GROUP_EDITOR_TRADE_AMOUNT), x_offset + 21, y_offset - 1, COLOR_MASK_NONE, SCALE_NONE);
+    } else if (trade_max < 32) {
+        image_draw(image_group(GROUP_EDITOR_TRADE_AMOUNT) + 1, x_offset + 17, y_offset - 1, COLOR_MASK_NONE, SCALE_NONE);
+    } else {
+        image_draw(image_group(GROUP_EDITOR_TRADE_AMOUNT) + 2, x_offset + 13, y_offset - 1, COLOR_MASK_NONE, SCALE_NONE);
     }
 }
 
@@ -266,7 +259,9 @@ static void draw_city_info(const empire_city *city)
 
 static void draw_panel_buttons(const empire_city *city)
 {
-    arrow_buttons_draw(data.x_min + 20, data.y_max - 100, arrow_buttons_empire, 2);
+    if (scenario_empire_id() != SCENARIO_CUSTOM_EMPIRE) {
+        arrow_buttons_draw(data.x_min + 20, data.y_max - 100, arrow_buttons_empire, 2);
+    }
 
     if (city) {
         draw_city_info(city);
