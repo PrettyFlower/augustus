@@ -19,6 +19,7 @@
 #include "scenario/editor.h"
 #include "scenario/empire.h"
 #include "window/editor/map.h"
+#include "window/empire.h"
 
 #define MAX_WIDTH 2032
 #define MAX_HEIGHT 1136
@@ -45,16 +46,14 @@ static struct {
     int show_battle_objects;
 } data;
 
-static void init(void)
+static void update_screen_size(void)
 {
-    data.selected_button = 0;
-    int selected_object = empire_selected_object();
-    if (selected_object) {
-        data.selected_city = empire_city_get_for_object(selected_object - 1);
-    } else {
-        data.selected_city = 0;
-    }
-    data.focus_button_id = 0;
+    int s_width = screen_width();
+    int s_height = screen_height();
+    data.x_min = s_width <= MAX_WIDTH ? 0 : (s_width - MAX_WIDTH) / 2;
+    data.x_max = s_width <= MAX_WIDTH ? s_width : data.x_min + MAX_WIDTH;
+    data.y_min = s_height <= MAX_HEIGHT ? 0 : (s_height - MAX_HEIGHT) / 2;
+    data.y_max = s_height <= MAX_HEIGHT ? s_height : data.y_min + MAX_HEIGHT;
 }
 
 static int map_viewport_width(void)
@@ -65,6 +64,20 @@ static int map_viewport_width(void)
 static int map_viewport_height(void)
 {
     return data.y_max - data.y_min - 136;
+}
+
+static void init(void)
+{
+    update_screen_size();
+    data.selected_button = 0;
+    int selected_object = empire_selected_object();
+    if (selected_object) {
+        data.selected_city = empire_city_get_for_object(selected_object - 1);
+    } else {
+        data.selected_city = 0;
+    }
+    data.focus_button_id = 0;
+    empire_center_on_our_city(map_viewport_width(), map_viewport_height());
 }
 
 static void draw_paneling(void)
@@ -104,13 +117,7 @@ static void draw_paneling(void)
 
 static void draw_background(void)
 {
-    int s_width = screen_width();
-    int s_height = screen_height();
-    data.x_min = s_width <= MAX_WIDTH ? 0 : (s_width - MAX_WIDTH) / 2;
-    data.x_max = s_width <= MAX_WIDTH ? s_width : data.x_min + MAX_WIDTH;
-    data.y_min = s_height <= MAX_HEIGHT ? 0 : (s_height - MAX_HEIGHT) / 2;
-    data.y_max = s_height <= MAX_HEIGHT ? s_height : data.y_min + MAX_HEIGHT;
-
+    update_screen_size();
     if (data.x_min || data.y_min) {
         graphics_clear_screen();
     }
@@ -150,6 +157,9 @@ static void draw_empire_object(const empire_object *obj)
         draw_shadowed_number(obj->distant_battle_travel_months,
             data.x_draw_offset + x + 7, data.y_draw_offset + y - 9,
             obj->type == EMPIRE_OBJECT_ROMAN_ARMY ? COLOR_WHITE : COLOR_FONT_RED);
+    }
+    if (scenario_empire_id() == SCENARIO_CUSTOM_EMPIRE && (obj->type == EMPIRE_OBJECT_LAND_TRADE_ROUTE || obj->type == EMPIRE_OBJECT_SEA_TRADE_ROUTE)) {
+        window_empire_draw_trade_dots(obj, data.x_draw_offset, data.y_draw_offset);
     }
     image_draw(image_id, data.x_draw_offset + x, data.y_draw_offset + y, COLOR_MASK_NONE, SCALE_NONE);
     const image *img = image_get(image_id);

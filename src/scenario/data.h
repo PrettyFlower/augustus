@@ -21,6 +21,7 @@
 #define MAX_SCENARIO_NAME 65
 #define MAX_BRIEF_DESCRIPTION 64
 #define MAX_BRIEFING 522
+#define MAX_CUSTOM_EMPIRE_NAME 50
 
 enum {
     EVENT_NOT_STARTED = 0,
@@ -168,6 +169,7 @@ extern struct scenario_t {
         int expansion_year;
         int distant_battle_roman_travel_months;
         int distant_battle_enemy_travel_months;
+        uint8_t custom_name[MAX_CUSTOM_EMPIRE_NAME];
     } empire;
 
     request_t requests[MAX_REQUESTS];

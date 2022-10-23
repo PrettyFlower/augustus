@@ -4,6 +4,7 @@
 #include "core/string.h"
 #include "map/grid.h"
 #include "scenario/data.h"
+#include "scenario/empire.h"
 #include "scenario/property.h"
 
 #include <string.h>
@@ -347,6 +348,18 @@ void scenario_editor_change_empire(int change)
         scenario.empire.id = 0;
     }
     scenario.is_saved = 0;
+}
+
+void scenario_editor_set_custom_empire(const uint8_t *filename)
+{
+    scenario.empire.id = SCENARIO_CUSTOM_EMPIRE;
+    string_copy(filename, scenario.empire.custom_name, MAX_CUSTOM_EMPIRE_NAME);
+}
+
+void scenario_editor_unset_custom_empire(void)
+{
+    scenario.empire.id = 0;
+    memset(scenario.empire.custom_name, 0, sizeof(scenario.empire.custom_name));
 }
 
 int scenario_editor_is_building_allowed(int id)

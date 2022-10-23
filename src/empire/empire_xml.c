@@ -99,6 +99,7 @@ static void xml_parse_city(int num_attrs, const char **attributes)
         } else if (strcmp(attr_name, "ours") == 0 && strcmp(attr_val, "true") == 0) {
             city_obj->city_type = EMPIRE_CITY_OURS;
             city_obj->obj.image_id = image_group(GROUP_EMPIRE_CITY);
+            route_obj->in_use = 0;
         } else if (strcmp(attr_name, "trade_route_cost") == 0) {
             city_obj->trade_route_cost = string_to_int(attr_val);
         } else if (strcmp(attr_name, "trade_by_sea") == 0) {
@@ -299,6 +300,8 @@ static void reset_data(void)
 
 int empire_xml_parse_empire(const char *file_name)
 {
+    empire_object_clear();
+
     log_info("Loading empire file", file_name, 0);
     reset_data();
 
@@ -335,10 +338,12 @@ int empire_xml_parse_empire(const char *file_name)
 
     for (int i = 0; i < MAX_EMPIRE_OBJECTS; i++) {
         full_empire_object *trade_city = full_empire_object_get(i);
-        if (!trade_city->in_use) {
-            break;
-        }
-        if (trade_city->obj.type != EMPIRE_OBJECT_CITY || trade_city->city_type == EMPIRE_CITY_OURS || !trade_city->obj.trade_route_id) {
+        if (
+            !trade_city->in_use || 
+            trade_city->obj.type != EMPIRE_OBJECT_CITY || 
+            trade_city->city_type == EMPIRE_CITY_OURS || 
+            !trade_city->obj.trade_route_id
+        ) {
             continue;
         }
         empire_object *trade_route = empire_object_get(trade_city->obj.trade_route_id);

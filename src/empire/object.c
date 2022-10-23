@@ -42,6 +42,11 @@ static void fix_image_ids(void)
     }
 }
 
+void empire_object_clear(void)
+{
+    memset(objects, 0, sizeof(objects));
+}
+
 void empire_object_load(buffer *buf)
 {
     for (int i = 0; i < MAX_EMPIRE_OBJECTS; i++) {

@@ -326,7 +326,7 @@ static void draw_background(void)
     }
 }
 
-static void draw_trade_dots(const empire_object *trade_route)
+void window_empire_draw_trade_dots(const empire_object *trade_route, int x_draw_offset, int y_draw_offset)
 {
     empire_object *our_city = empire_object_get_our_city();
     empire_object *trade_city = empire_object_get_trade_city(trade_route->trade_route_id);
@@ -341,7 +341,7 @@ static void draw_trade_dots(const empire_object *trade_route)
     for (int j = 0; j < num_dots; j++) {
         int x = x_factor * j * 15 + our_city->x + 32;
         int y = y_factor * j * 15 + our_city->y + 32;
-        image_draw(image_id, data.x_draw_offset + x, data.y_draw_offset + y, COLOR_MASK_NONE, SCALE_NONE);
+        image_draw(image_id, x_draw_offset + x, y_draw_offset + y, COLOR_MASK_NONE, SCALE_NONE);
     }
 }
 
@@ -351,8 +351,8 @@ static void draw_empire_object(const empire_object *obj)
         if (!empire_city_is_trade_route_open(obj->trade_route_id)) {
             return;
         }
-        if (/*scenario_empire_id() == SCENARIO_CUSTOM_EMPIRE*/ 1) {
-            draw_trade_dots(obj);
+        if (scenario_empire_id() == SCENARIO_CUSTOM_EMPIRE) {
+            window_empire_draw_trade_dots(obj, data.x_draw_offset, data.y_draw_offset);
         }
     }
     int x, y, image_id;

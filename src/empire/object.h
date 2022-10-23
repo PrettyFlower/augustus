@@ -44,6 +44,8 @@ typedef struct {
     empire_object obj;
 } full_empire_object;
 
+void empire_object_clear(void);
+
 void empire_object_load(buffer *buf);
 
 void empire_object_init_cities(void);

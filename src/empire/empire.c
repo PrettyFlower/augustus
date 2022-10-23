@@ -34,11 +34,6 @@ static struct {
 
 void empire_load(int is_custom_scenario, int empire_id)
 {
-    if (/*empire_id == SCENARIO_CUSTOM_EMPIRE*/ 1) {
-        empire_xml_parse_empire("test_empire.xml");
-        return;
-    }
-
     char raw_data[EMPIRE_DATA_SIZE];
     const char *filename = is_custom_scenario ? "c32.emp" : "c3.emp";
 
@@ -72,11 +67,8 @@ static void check_scroll_boundaries(void)
     data.scroll_y = calc_bound(data.scroll_y, 0, max_y);
 }
 
-void empire_load_editor(int empire_id, int viewport_width, int viewport_height)
+void empire_center_on_our_city(int viewport_width, int viewport_height)
 {
-    empire_load(1, empire_id);
-    empire_object_init_cities();
-
     const empire_object *our_city = empire_object_get_our_city();
 
     data.viewport_width = viewport_width;
@@ -89,6 +81,13 @@ void empire_load_editor(int empire_id, int viewport_width, int viewport_height)
         data.scroll_y = data.initial_scroll_y;
     }
     check_scroll_boundaries();
+}
+
+void empire_load_editor(int empire_id, int viewport_width, int viewport_height)
+{
+    empire_load(1, empire_id);
+    empire_object_init_cities();
+    empire_center_on_our_city(viewport_width, viewport_height);
 }
 
 void empire_init_scenario(void)
