@@ -8,15 +8,18 @@
 #include "building/storage.h"
 #include "city/culture.h"
 #include "city/data.h"
-#include "core/file.h"
-#include "core/log.h"
 #include "city/message.h"
 #include "city/view.h"
+#include "core/file.h"
+#include "core/log.h"
 #include "core/dir.h"
 #include "core/random.h"
+#include "core/string.h"
 #include "core/zip.h"
+#include "core/zlib_helper.h"
 #include "empire/city.h"
 #include "empire/empire.h"
+#include "empire/empire_xml.h"
 #include "empire/trade_prices.h"
 #include "empire/trade_route.h"
 #include "figure/enemy_army.h"
@@ -42,6 +45,7 @@
 #include "scenario/criteria.h"
 #include "scenario/earthquake.h"
 #include "scenario/emperor_change.h"
+#include "scenario/empire.h"
 #include "scenario/gladiator_revolt.h"
 #include "scenario/invasion.h"
 #include "scenario/map.h"
@@ -57,10 +61,9 @@
 
 #define COMPRESS_BUFFER_SIZE 3000000
 #define UNCOMPRESSED 0x80000000
-
 #define PIECE_SIZE_DYNAMIC 0
 
-static const int SAVE_GAME_CURRENT_VERSION = 0x8c;
+static const int SAVE_GAME_CURRENT_VERSION = 0x8d;
 
 static const int SAVE_GAME_LAST_ORIGINAL_LIMITS_VERSION = 0x66;
 static const int SAVE_GAME_LAST_SMALLER_IMAGE_ID_VERSION = 0x76;
@@ -79,6 +82,7 @@ static const int SAVE_GAME_LAST_ZIP_COMPRESSION = 0x88;
 static const int SAVE_GAME_LAST_ENEMY_ARMIES_BUFFER_BUG = 0x89;
 static const int SAVE_GAME_LAST_BARRACKS_TOWER_SENTRY_REQUEST = 0x8a;
 // static const int SAVE_GAME_LAST_WITHOUT_HIGHWAYS = 0x8b; no actual changes to how games are saved. Crudelios just wants this here
+static const int SAVE_GAME_LAST_UNVERSIONED_SCENARIOS = 0x8c;
 
 static char compress_buffer[COMPRESS_BUFFER_SIZE];
 
@@ -98,12 +102,13 @@ typedef struct {
     buffer *random_iv;
     buffer *camera;
     buffer *scenario;
+    buffer *empire;
     buffer *end_marker;
 } scenario_state;
 
 static struct {
     int num_pieces;
-    file_piece pieces[10];
+    file_piece pieces[11];
     scenario_state state;
     char last_loaded_scenario[FILE_NAME_MAX];
 } scenario_data;
@@ -253,10 +258,10 @@ static void init_file_piece(file_piece *piece, int size, int compressed)
     }
 }
 
-static buffer *create_scenario_piece(int size)
+static buffer *create_scenario_piece(int size, int compressed)
 {
     file_piece *piece = &scenario_data.pieces[scenario_data.num_pieces++];
-    init_file_piece(piece, size, 0);
+    init_file_piece(piece, size, compressed);
     return &piece->buf;
 }
 
@@ -276,33 +281,32 @@ static void clear_savegame_pieces(void)
     savegame_data.num_pieces = 0;
 }
 
-static int reset_scenario_pieces(void)
+static void clear_scenario_pieces(void)
 {
-    if (scenario_data.num_pieces == 0) {
-        return 0;
-    }
     for (int i = 0; i < scenario_data.num_pieces; i++) {
         buffer_reset(&scenario_data.pieces[i].buf);
+        free(scenario_data.pieces[i].buf.data);
     }
-    return 1;
+    scenario_data.num_pieces = 0;
 }
 
-static void init_scenario_data(void)
+static void init_scenario_data(int version)
 {
-    if (reset_scenario_pieces()) {
-        return;
-    }
+    clear_scenario_pieces();
     scenario_state *state = &scenario_data.state;
-    state->graphic_ids = create_scenario_piece(52488);
-    state->edge = create_scenario_piece(26244);
-    state->terrain = create_scenario_piece(52488);
-    state->bitfields = create_scenario_piece(26244);
-    state->random = create_scenario_piece(26244);
-    state->elevation = create_scenario_piece(26244);
-    state->random_iv = create_scenario_piece(8);
-    state->camera = create_scenario_piece(8);
-    state->scenario = create_scenario_piece(1720);
-    state->end_marker = create_scenario_piece(4);
+    state->graphic_ids = create_scenario_piece(52488, 0);
+    state->edge = create_scenario_piece(26244, 0);
+    state->terrain = create_scenario_piece(52488, 0);
+    state->bitfields = create_scenario_piece(26244, 0);
+    state->random = create_scenario_piece(26244, 0);
+    state->elevation = create_scenario_piece(26244, 0);
+    state->random_iv = create_scenario_piece(8, 0);
+    state->camera = create_scenario_piece(8, 0);
+    state->scenario = create_scenario_piece(1770, 0);
+    if (version > SCENARIO_LAST_UNVERSIONED) {
+        state->empire = create_scenario_piece(PIECE_SIZE_DYNAMIC, 1);
+    }
+    state->end_marker = create_scenario_piece(4, 0);
 }
 
 static void get_version_data(savegame_version_data *version_data, int version)
@@ -448,7 +452,7 @@ static void init_savegame_data(int version)
     }
 }
 
-static void scenario_load_from_state(scenario_state *file)
+static void scenario_load_from_state(scenario_state *file, int version)
 {
     map_image_load_state(file->graphic_ids);
     map_terrain_load_state(file->terrain, 0, file->graphic_ids, 1);
@@ -456,11 +460,11 @@ static void scenario_load_from_state(scenario_state *file)
     map_random_load_state(file->random);
     map_elevation_load_state(file->elevation);
     city_view_load_scenario_state(file->camera);
-
     random_load_state(file->random_iv);
-
-    scenario_load_state(file->scenario);
-
+    scenario_load_state(file->scenario, version);
+    if (version > SCENARIO_LAST_UNVERSIONED) {
+        empire_xml_load_state(file->empire);
+    }
     buffer_skip(file->end_marker, 4);
 }
 
@@ -472,12 +476,17 @@ static void scenario_save_to_state(scenario_state *file)
     map_random_save_state(file->random);
     map_elevation_save_state(file->elevation);
     city_view_save_scenario_state(file->camera);
-
     random_save_state(file->random_iv);
-
     scenario_save_state(file->scenario);
-
+    empire_xml_save_state(file->empire);
     buffer_skip(file->end_marker, 4);
+}
+
+static int save_version_to_scenario_version(int save_version) {
+    if (save_version >= SAVE_GAME_LAST_UNVERSIONED_SCENARIOS) {
+        return SCENARIO_CURRENT_VERSION;
+    }
+    return SCENARIO_LAST_UNVERSIONED;
 }
 
 static void savegame_load_from_state(savegame_state *state, int version)
@@ -488,7 +497,8 @@ static void savegame_load_from_state(savegame_state *state, int version)
         state->player_name,
         state->scenario_name);
 
-    scenario_load_state(state->scenario);
+    int scenario_version = save_version_to_scenario_version(version);
+    scenario_load_state(state->scenario, scenario_version);
     scenario_map_init();
 
     map_building_load_state(state->building_grid, state->building_damage_grid);
@@ -657,17 +667,122 @@ static void savegame_save_to_state(savegame_state *state)
     building_monument_delivery_save_state(state->deliveries);
 }
 
-static int load_scenario_to_buffers(const char *filename)
+static int get_scenario_version(FILE *fp)
 {
-    init_scenario_data();
+    uint8_t version_magic[8];
+    fread(version_magic, 1, 8, fp);
+    if (strcmp(version_magic, "VERSION") != 0) {
+        return SCENARIO_LAST_UNVERSIONED;
+    }
+
+    buffer buf;
+    uint8_t version_data[4];
+    buffer_init(&buf, version_data, 4);
+    fread(version_data, 1, 4, fp);
+    return buffer_read_i32(&buf);
+}
+
+static int read_int32(FILE *fp)
+{
+    uint8_t data[4];
+    if (fread(&data, 1, 4, fp) != 4) {
+        return 0;
+    }
+    buffer buf;
+    buffer_init(&buf, data, 4);
+    return buffer_read_i32(&buf);
+}
+
+static void write_int32(FILE *fp, int value)
+{
+    uint8_t data[4];
+    buffer buf;
+    buffer_init(&buf, data, 4);
+    buffer_write_i32(&buf, value);
+    fwrite(&data, 1, 4, fp);
+}
+
+static int read_compressed_chunk(FILE *fp, void *buffer, int bytes_to_read, int read_as_zlib)
+{
+    if (bytes_to_read > COMPRESS_BUFFER_SIZE) {
+        return 0;
+    }
+    int input_size = read_int32(fp);
+    if ((unsigned int)input_size == UNCOMPRESSED) {
+        return fread(buffer, 1, bytes_to_read, fp) == bytes_to_read;
+    } else {
+        if (fread(compress_buffer, 1, input_size, fp) != input_size) {
+            return 0;
+        }
+
+        if (!read_as_zlib) {
+            return zip_decompress(compress_buffer, input_size, buffer, &bytes_to_read);
+        } else {
+            int output_size = 0;
+            return zlib_helper_decompress(compress_buffer, input_size, buffer, bytes_to_read, &output_size);
+        }
+    }
+}
+
+static int read_compressed_savegame_chunk(FILE *fp, void *buffer, int bytes_to_read, int version)
+{
+    int read_as_zlib = version > SAVE_GAME_LAST_ZIP_COMPRESSION;
+    read_compressed_chunk(fp, buffer, bytes_to_read, read_as_zlib);
+}
+
+static int write_compressed_chunk(FILE *fp, void *buffer, int bytes_to_write)
+{
+    if (bytes_to_write > COMPRESS_BUFFER_SIZE) {
+        return 0;
+    }
+    int output_size = 0;
+    if (zlib_helper_compress(buffer, bytes_to_write, compress_buffer, COMPRESS_BUFFER_SIZE, &output_size)) {
+        write_int32(fp, output_size);
+        fwrite(compress_buffer, 1, output_size, fp);
+    } else {
+        // unable to compress: write uncompressed
+        write_int32(fp, UNCOMPRESSED);
+        fwrite(buffer, 1, bytes_to_write, fp);
+    }
+    return 1;
+}
+
+static int prepare_dynamic_piece(FILE *fp, file_piece *piece)
+{
+    if (piece->dynamic) {
+        int size = read_int32(fp);
+        if (!size) {
+            return 0;
+        }
+        uint8_t *data = malloc(size);
+        memset(data, 0, size);
+        buffer_init(&piece->buf, data, size);
+    }
+    return 1;
+}
+
+static int load_scenario_to_buffers(const char *filename, int *version)
+{
     FILE *fp = file_open(dir_get_file(filename, NOT_LOCALIZED), "rb");
     if (!fp) {
         return 0;
     }
+    *version = get_scenario_version(fp);
+    init_scenario_data(*version);
     for (int i = 0; i < scenario_data.num_pieces; i++) {
-        size_t read_size = fread(scenario_data.pieces[i].buf.data, 1, scenario_data.pieces[i].buf.size, fp);
-        if (read_size != scenario_data.pieces[i].buf.size) {
-            log_error("Unable to load scenario", filename, 0);
+        file_piece *piece = &scenario_data.pieces[i];
+        int result = 0;
+        if (!prepare_dynamic_piece(fp, piece)) {
+            continue;
+        }
+        if (piece->compressed) {
+            result = read_compressed_chunk(fp, piece->buf.data, piece->buf.size, 1);
+        } else {
+            result = fread(piece->buf.data, 1, piece->buf.size, fp) == piece->buf.size;
+        }
+        if (!result) {
+            log_info("Incorrect buffer size, got", 0, result);
+            log_info("Incorrect buffer size, expected", 0, piece->buf.size);
             file_close(fp);
             return 0;
         }
@@ -679,12 +794,13 @@ static int load_scenario_to_buffers(const char *filename)
 int game_file_io_read_scenario(const char *filename)
 {
     log_info("Loading scenario", filename, 0);
+    int version = 0;
     if (strcmp(scenario_data.last_loaded_scenario, filename) != 0) {
-        if (!load_scenario_to_buffers(filename)) {
+        if (!load_scenario_to_buffers(filename, &version)) {
             return 0;
         }
     }
-    scenario_load_from_state(&scenario_data.state);
+    scenario_load_from_state(&scenario_data.state, version);
     scenario_data.last_loaded_scenario[0] = 0;
     return 1;
 }
@@ -734,8 +850,9 @@ static void set_viewport(int *x, int *y, int *width, int *height)
 
 int game_file_io_read_scenario_info(const char *filename, scenario_info *info)
 {
+    int version = 0;
     if (strcmp(scenario_data.last_loaded_scenario, filename) != 0) {
-        if (!load_scenario_to_buffers(filename)) {
+        if (!load_scenario_to_buffers(filename, &version)) {
             return 0;
         }
     }
@@ -778,7 +895,7 @@ int game_file_io_read_scenario_info(const char *filename, scenario_info *info)
     widget_minimap_update(&minimap_data.functions);
     city_view_restore_lookup();
 
-    reset_scenario_pieces();
+    clear_scenario_pieces();
 
     return 1;
 }
@@ -786,7 +903,7 @@ int game_file_io_read_scenario_info(const char *filename, scenario_info *info)
 int game_file_io_write_scenario(const char *filename)
 {
     log_info("Saving scenario", filename, 0);
-    init_scenario_data();
+    init_scenario_data(SCENARIO_CURRENT_VERSION);
     scenario_save_to_state(&scenario_data.state);
 
     FILE *fp = file_open(filename, "wb");
@@ -794,131 +911,14 @@ int game_file_io_write_scenario(const char *filename)
         log_error("Unable to save scenario", 0, 0);
         return 0;
     }
+    uint8_t header[8];
+    string_copy("VERSION", header, 8);
+    fwrite(header, 1, 8, fp);
+    write_int32(fp, SCENARIO_CURRENT_VERSION);
     for (int i = 0; i < scenario_data.num_pieces; i++) {
         fwrite(scenario_data.pieces[i].buf.data, 1, scenario_data.pieces[i].buf.size, fp);
     }
     file_close(fp);
-    return 1;
-}
-
-static int read_int32(FILE *fp)
-{
-    uint8_t data[4];
-    if (fread(&data, 1, 4, fp) != 4) {
-        return 0;
-    }
-    buffer buf;
-    buffer_init(&buf, data, 4);
-    return buffer_read_i32(&buf);
-}
-
-static void write_int32(FILE *fp, int value)
-{
-    uint8_t data[4];
-    buffer buf;
-    buffer_init(&buf, data, 4);
-    buffer_write_i32(&buf, value);
-    fwrite(&data, 1, 4, fp);
-}
-
-static int zlib_decompress(void *input_buffer, int input_length, void *output_buffer, int output_length)
-{
-    z_stream strm;
-
-    strm.zalloc = Z_NULL;
-    strm.zfree = Z_NULL;
-    strm.opaque = Z_NULL;
-    strm.avail_in = 0;
-    strm.next_in = Z_NULL;
-    if (inflateInit(&strm) != Z_OK) {
-        return 0;
-    }
-
-    strm.avail_in = input_length;
-    strm.next_in = input_buffer;
-    strm.avail_out = output_length;
-    strm.next_out = output_buffer;
-    int result = inflate(&strm, Z_NO_FLUSH);
-    inflateEnd(&strm);
-    if (result != Z_STREAM_END || strm.avail_out != 0) {
-        return 0;
-    }
-    return 1;
-}
-
-static int read_compressed_chunk(FILE *fp, void *buffer, int bytes_to_read, int version)
-{
-    if (bytes_to_read > COMPRESS_BUFFER_SIZE) {
-        return 0;
-    }
-    int input_size = read_int32(fp);
-    if ((unsigned int)input_size == UNCOMPRESSED) {
-        return fread(buffer, 1, bytes_to_read, fp) == bytes_to_read;
-    } else {
-        if (fread(compress_buffer, 1, input_size, fp) != input_size) {
-            return 0;
-        }
-
-        if (version <= SAVE_GAME_LAST_ZIP_COMPRESSION) {
-            return zip_decompress(compress_buffer, input_size, buffer, &bytes_to_read);
-        } else {
-            return zlib_decompress(compress_buffer, input_size, buffer, bytes_to_read);
-        }
-    }
-}
-
-static int zlib_compress(void *input_buffer, int input_length, void *output_buffer, int *output_length)
-{
-    z_stream strm;
-    strm.zalloc = Z_NULL;
-    strm.zfree = Z_NULL;
-    strm.opaque = Z_NULL;
-    if (deflateInit(&strm, Z_BEST_SPEED) != Z_OK) {
-        return 0;
-    }
-
-    strm.avail_in = input_length;
-    strm.next_in = input_buffer;
-    strm.avail_out = COMPRESS_BUFFER_SIZE;
-    strm.next_out = output_buffer;
-    int result = deflate(&strm, Z_FINISH);
-    deflateEnd(&strm);
-    if (result != Z_STREAM_END || strm.avail_in != 0) {
-        return 0;
-    }
-
-    *output_length = COMPRESS_BUFFER_SIZE - strm.avail_out;
-    return 1;
-}
-
-static int write_compressed_chunk(FILE *fp, void *buffer, int bytes_to_write)
-{
-    if (bytes_to_write > COMPRESS_BUFFER_SIZE) {
-        return 0;
-    }
-    int output_size = COMPRESS_BUFFER_SIZE;
-    if (zlib_compress(buffer, bytes_to_write, compress_buffer, &output_size)) {
-        write_int32(fp, output_size);
-        fwrite(compress_buffer, 1, output_size, fp);
-    } else {
-        // unable to compress: write uncompressed
-        write_int32(fp, UNCOMPRESSED);
-        fwrite(buffer, 1, bytes_to_write, fp);
-    }
-    return 1;
-}
-
-static int prepare_dynamic_piece(FILE *fp, file_piece *piece)
-{
-    if (piece->dynamic) {
-        int size = read_int32(fp);
-        if (!size) {
-            return 0;
-        }
-        uint8_t *data = malloc(size);
-        memset(data, 0, size);
-        buffer_init(&piece->buf, data, size);
-    }
     return 1;
 }
 
@@ -931,7 +931,7 @@ static int savegame_read_from_file(FILE *fp, int version)
             continue;
         }
         if (piece->compressed) {
-            result = read_compressed_chunk(fp, piece->buf.data, piece->buf.size, version);
+            result = read_compressed_savegame_chunk(fp, piece->buf.data, piece->buf.size, version);
         } else {
             result = fread(piece->buf.data, 1, piece->buf.size, fp) == piece->buf.size;
         }
@@ -1108,22 +1108,22 @@ static int savegame_read_file_info(FILE *fp, saved_game_info *info, int version)
         skip_piece(fp, version_data.piece_sizes.image_grid, 1);
     }
 
-    if (!read_compressed_chunk(fp, edge_grid.buf.data, edge_grid.buf.size, version)) {
+    if (!read_compressed_savegame_chunk(fp, edge_grid.buf.data, edge_grid.buf.size, version)) {
         return 0;
     }
 
-    if (!read_compressed_chunk(fp, building_grid.buf.data, building_grid.buf.size, version)) {
+    if (!read_compressed_savegame_chunk(fp, building_grid.buf.data, building_grid.buf.size, version)) {
         return 0;
     }
 
-    if (!read_compressed_chunk(fp, terrain_grid.buf.data, terrain_grid.buf.size, version)) {
+    if (!read_compressed_savegame_chunk(fp, terrain_grid.buf.data, terrain_grid.buf.size, version)) {
         return 0;
     }
 
     skip_piece(fp, 26244, 1);
     skip_piece(fp, 52488, 1);
 
-    if (!read_compressed_chunk(fp, bitfields_grid.buf.data, bitfields_grid.buf.size, version)) {
+    if (!read_compressed_savegame_chunk(fp, bitfields_grid.buf.data, bitfields_grid.buf.size, version)) {
         return 0;
     }
 
@@ -1144,7 +1144,7 @@ static int savegame_read_file_info(FILE *fp, saved_game_info *info, int version)
     skip_piece(fp, version_data.piece_sizes.formations, 1);
     skip_piece(fp, 12, 0);
 
-    if (!read_compressed_chunk(fp, city_data.buf.data, city_data.buf.size, version)) {
+    if (!read_compressed_savegame_chunk(fp, city_data.buf.data, city_data.buf.size, version)) {
         return 0;
     }
 
@@ -1152,7 +1152,7 @@ static int savegame_read_file_info(FILE *fp, saved_game_info *info, int version)
     skip_piece(fp, 64, 0);
     skip_piece(fp, 4, 0);
 
-    if (!prepare_dynamic_piece(fp, &buildings) || !read_compressed_chunk(fp, buildings.buf.data, buildings.buf.size, version)) {
+    if (!prepare_dynamic_piece(fp, &buildings) || !read_compressed_savegame_chunk(fp, buildings.buf.data, buildings.buf.size, version)) {
         return 0;
     }
 

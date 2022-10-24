@@ -1,19 +1,20 @@
 #include "empire_xml.h"
 
 #include "assets/assets.h"
+#include "core/buffer.h"
 #include "core/file.h"
 #include "core/image_group.h"
 #include "core/log.h"
 #include "core/string.h"
+#include "core/zlib_helper.h"
 #include "empire/city.h"
 #include "empire/object.h"
+#include "scenario/data.h"
 
 #include "expat.h"
 
 #include <stdio.h>
 #include <string.h>
-
-#define XML_BUFFER_SIZE 4096
 
 typedef enum {
     LIST_NONE = -1,
@@ -303,37 +304,19 @@ static void reset_data(void)
     data.invasion_path_idx = 0;
 }
 
-int empire_xml_parse_empire(const char *file_name)
+static int parse_xml(char *buffer, int buffer_length)
 {
     empire_object_clear();
-
-    log_info("Loading empire file", file_name, 0);
-    reset_data();
-
-    FILE *file = file_open(file_name, "r");
-
-    if (!file) {
-        log_error("Error opening empire file", file_name, 0);
-        return 0;
-    }
-
     XML_Parser parser = XML_ParserCreate(NULL);
     XML_SetElementHandler(parser, xml_start_element, xml_end_element);
-
-    char buffer[XML_BUFFER_SIZE];
-    int done = 0;
-    do {
-        size_t bytes_read = fread(buffer, 1, XML_BUFFER_SIZE, file);
-        done = bytes_read < sizeof(buffer);
-        if (XML_Parse(parser, buffer, (int)bytes_read, done) == XML_STATUS_ERROR) {
-            log_error("Error parsing file", file_name, 0);
-            data.success = 0;
-            break;
-        }
-    } while (!done && data.success);
-
+    enum XML_Status result = XML_Parse(parser, buffer, buffer_length, XML_TRUE);
+    if (result == XML_STATUS_ERROR) {
+        data.success = 0;
+    }
     XML_ParserFree(parser);
-    file_close(file);
+    if (!data.success) {
+        return 0;
+    }
 
     empire_object *our_city = empire_object_get_our_city();
     if (!our_city) {
@@ -344,11 +327,11 @@ int empire_xml_parse_empire(const char *file_name)
     for (int i = 0; i < MAX_EMPIRE_OBJECTS; i++) {
         full_empire_object *trade_city = full_empire_object_get(i);
         if (
-            !trade_city->in_use || 
-            trade_city->obj.type != EMPIRE_OBJECT_CITY || 
-            trade_city->city_type == EMPIRE_CITY_OURS || 
+            !trade_city->in_use ||
+            trade_city->obj.type != EMPIRE_OBJECT_CITY ||
+            trade_city->city_type == EMPIRE_CITY_OURS ||
             !trade_city->obj.trade_route_id
-        ) {
+            ) {
             continue;
         }
         empire_object *trade_route = empire_object_get(trade_city->obj.trade_route_id);
@@ -362,4 +345,60 @@ int empire_xml_parse_empire(const char *file_name)
     empire_object_init_cities();
 
     return data.success;
+}
+
+static char *file_to_buffer(const char *filename, int *output_length)
+{
+    FILE *file = file_open(filename, "r");
+    if (!file) {
+        log_error("Error opening empire file", filename, 0);
+        return 0;
+    }
+    fseek(file, 0, SEEK_END);
+    int size = ftell(file);
+    rewind(file);
+
+    char *buffer = malloc(size);
+    memset(buffer, 0, size);
+    if (!buffer) {
+        log_error("Unable to allocate buffer to read XML file", filename, 0);
+        free(buffer);
+        file_close(file);
+        return 0;
+    }
+    *output_length = fread(buffer, 1, size, file);
+    if (*output_length > size) {
+        log_error("Unable to read file into buffer", filename, 0);
+        free(buffer);
+        file_close(file);
+        *output_length = 0;
+        return 0;
+    }
+    file_close(file);
+    return buffer;
+}
+
+int empire_xml_parse_file(const char *filename)
+{
+    int output_length = 0;
+    char *xml_contents = file_to_buffer(filename, &output_length);
+    if (!xml_contents) {
+        return 0;
+    }
+    int success = parse_xml(xml_contents, output_length);
+    free(xml_contents);
+    if (!success) {
+        log_error("Error parsing file", filename, 0);
+    }
+    return success;
+}
+
+void empire_xml_save_state(buffer *buf)
+{
+    //scenario.
+}
+
+void empire_xml_load_state(buffer *buf)
+{
+
 }

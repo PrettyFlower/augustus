@@ -16,7 +16,7 @@ void scenario_unlock_all_buildings(void);
 
 void scenario_save_state(buffer *buf);
 
-void scenario_load_state(buffer *buf);
+void scenario_load_state(buffer *buf, int version);
 
 void scenario_description_from_buffer(buffer *buf, uint8_t *description);
 int scenario_climate_from_buffer(buffer *buf);

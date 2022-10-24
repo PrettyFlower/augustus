@@ -287,6 +287,7 @@ set(CORE_FILES
     ${PROJECT_SOURCE_DIR}/src/core/string.c
     ${PROJECT_SOURCE_DIR}/src/core/time.c
     ${PROJECT_SOURCE_DIR}/src/core/zip.c
+    ${PROJECT_SOURCE_DIR}/src/core/zlib_helper.c
 )
 
 set(BUILDING_FILES

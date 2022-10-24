@@ -423,7 +423,7 @@ static void button_ok_cancel(int is_ok, int param2)
                 return;
             }
         } else if (data.type == FILE_TYPE_EMPIRE) {
-            int result = empire_xml_parse_empire(filename);
+            int result = empire_xml_parse_file(filename);
             if (result) {
                 scenario_editor_set_custom_empire(filename);
                 window_editor_empire_show();
