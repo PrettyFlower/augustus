@@ -913,7 +913,18 @@ int game_file_io_write_scenario(const char *filename)
     fwrite(header, 1, 8, fp);
     write_int32(fp, SCENARIO_CURRENT_VERSION);
     for (int i = 0; i < scenario_data.num_pieces; i++) {
-        fwrite(scenario_data.pieces[i].buf.data, 1, scenario_data.pieces[i].buf.size, fp);
+        file_piece *piece = &scenario_data.pieces[i];
+        if (piece->dynamic) {
+            write_int32(fp, piece->buf.size);
+            if (!piece->buf.size) {
+                continue;
+            }
+        }
+        if (piece->compressed) {
+            write_compressed_chunk(fp, piece->buf.data, piece->buf.size);
+        } else {
+            fwrite(piece->buf.data, 1, piece->buf.size, fp);
+        }
     }
     file_close(fp);
     return 1;

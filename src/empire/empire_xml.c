@@ -10,6 +10,7 @@
 #include "empire/city.h"
 #include "empire/object.h"
 #include "scenario/data.h"
+#include "scenario/empire.h"
 
 #include "expat.h"
 
@@ -306,6 +307,7 @@ static void reset_data(void)
 
 static int parse_xml(char *buffer, int buffer_length)
 {
+    reset_data();
     empire_object_clear();
     XML_Parser parser = XML_ParserCreate(NULL);
     XML_SetElementHandler(parser, xml_start_element, xml_end_element);
@@ -395,10 +397,29 @@ int empire_xml_parse_file(const char *filename)
 
 void empire_xml_save_state(buffer *buf)
 {
-    //scenario.
+    if (scenario.empire.id != SCENARIO_CUSTOM_EMPIRE) {
+        buffer_write_i32(buf, 0);
+        return;
+    }
+    int xml_length = 0;
+    char *xml_contents = file_to_buffer(scenario.empire.custom_name, &xml_length);
+    int buf_size = xml_length + sizeof(int);
+    uint8_t *buf_data = malloc(buf_size);
+    buffer_init(buf, buf_data, buf_size);
+    buffer_write_i32(buf, xml_length);
+    buffer_write_raw(buf, xml_contents, xml_length);
+    free(xml_contents);
 }
 
 void empire_xml_load_state(buffer *buf)
 {
-
+    int xml_length = buffer_read_i32(buf);
+    if (!xml_length) {
+        return;
+    }
+    char *xml_contents = malloc(xml_length);
+    memset(xml_contents, 0, xml_length);
+    buffer_read_raw(buf, xml_contents, xml_length);
+    parse_xml(xml_contents, xml_length);
+    free(xml_contents);
 }

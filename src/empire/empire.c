@@ -12,6 +12,7 @@
 #include "empire/object.h"
 #include "empire/trade_route.h"
 #include "empire/empire_xml.h"
+#include "scenario/empire.h"
 
 #include <string.h>
 
@@ -34,6 +35,11 @@ static struct {
 
 void empire_load(int is_custom_scenario, int empire_id)
 {
+    // empire has already been loaded from the scenario or save file at this point
+    if (empire_id == SCENARIO_CUSTOM_EMPIRE) {
+        return;
+    }
+
     char raw_data[EMPIRE_DATA_SIZE];
     const char *filename = is_custom_scenario ? "c32.emp" : "c3.emp";
 
