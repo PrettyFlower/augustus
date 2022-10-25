@@ -107,10 +107,10 @@ typedef struct {
 } scenario_state;
 
 static struct {
+    int version;
     int num_pieces;
     file_piece pieces[11];
     scenario_state state;
-    char last_loaded_scenario[FILE_NAME_MAX];
 } scenario_data;
 
 typedef struct {
@@ -283,6 +283,7 @@ static void clear_savegame_pieces(void)
 
 static void clear_scenario_pieces(void)
 {
+    scenario_data.version = 0;
     for (int i = 0; i < scenario_data.num_pieces; i++) {
         buffer_reset(&scenario_data.pieces[i].buf);
         free(scenario_data.pieces[i].buf.data);
@@ -293,6 +294,7 @@ static void clear_scenario_pieces(void)
 static void init_scenario_data(int version)
 {
     clear_scenario_pieces();
+    scenario_data.version = version;
     scenario_state *state = &scenario_data.state;
     state->graphic_ids = create_scenario_piece(52488, 0);
     state->edge = create_scenario_piece(26244, 0);
@@ -302,8 +304,10 @@ static void init_scenario_data(int version)
     state->elevation = create_scenario_piece(26244, 0);
     state->random_iv = create_scenario_piece(8, 0);
     state->camera = create_scenario_piece(8, 0);
-    state->scenario = create_scenario_piece(1770, 0);
-    if (version > SCENARIO_LAST_UNVERSIONED) {
+    if (version <= SCENARIO_LAST_UNVERSIONED) {
+        state->scenario = create_scenario_piece(1720, 0);
+    } else {
+        state->scenario = create_scenario_piece(1770, 0);
         state->empire = create_scenario_piece(PIECE_SIZE_DYNAMIC, 1);
     }
     state->end_marker = create_scenario_piece(4, 0);
@@ -672,6 +676,7 @@ static int get_scenario_version(FILE *fp)
     uint8_t version_magic[8];
     fread(version_magic, 1, 8, fp);
     if (strcmp(version_magic, "VERSION") != 0) {
+        rewind(fp);
         return SCENARIO_LAST_UNVERSIONED;
     }
 
@@ -761,14 +766,14 @@ static int prepare_dynamic_piece(FILE *fp, file_piece *piece)
     return 1;
 }
 
-static int load_scenario_to_buffers(const char *filename, int *version)
+static int load_scenario_to_buffers(const char *filename)
 {
     FILE *fp = file_open(dir_get_file(filename, NOT_LOCALIZED), "rb");
     if (!fp) {
         return 0;
     }
-    *version = get_scenario_version(fp);
-    init_scenario_data(*version);
+    int version = get_scenario_version(fp);
+    init_scenario_data(version);
     for (int i = 0; i < scenario_data.num_pieces; i++) {
         file_piece *piece = &scenario_data.pieces[i];
         int result = 0;
@@ -778,7 +783,8 @@ static int load_scenario_to_buffers(const char *filename, int *version)
         if (piece->compressed) {
             result = read_compressed_chunk(fp, piece->buf.data, piece->buf.size, 1);
         } else {
-            result = fread(piece->buf.data, 1, piece->buf.size, fp) == piece->buf.size;
+            int bytes_read = fread(piece->buf.data, 1, piece->buf.size, fp);
+            result = bytes_read == piece->buf.size;
         }
         if (!result) {
             log_info("Incorrect buffer size, got", 0, result);
@@ -794,14 +800,10 @@ static int load_scenario_to_buffers(const char *filename, int *version)
 int game_file_io_read_scenario(const char *filename)
 {
     log_info("Loading scenario", filename, 0);
-    int version = 0;
-    if (strcmp(scenario_data.last_loaded_scenario, filename) != 0) {
-        if (!load_scenario_to_buffers(filename, &version)) {
-            return 0;
-        }
+    if (!load_scenario_to_buffers(filename)) {
+        return 0;
     }
-    scenario_load_from_state(&scenario_data.state, version);
-    scenario_data.last_loaded_scenario[0] = 0;
+    scenario_load_from_state(&scenario_data.state, scenario_data.version);
     return 1;
 }
 
@@ -850,14 +852,9 @@ static void set_viewport(int *x, int *y, int *width, int *height)
 
 int game_file_io_read_scenario_info(const char *filename, scenario_info *info)
 {
-    int version = 0;
-    if (strcmp(scenario_data.last_loaded_scenario, filename) != 0) {
-        if (!load_scenario_to_buffers(filename, &version)) {
-            return 0;
-        }
+    if (!load_scenario_to_buffers(filename)) {
+        return 0;
     }
-
-    strncpy(scenario_data.last_loaded_scenario, filename, FILE_NAME_MAX - 1);
 
     const scenario_state *state = &scenario_data.state;
 
