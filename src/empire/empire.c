@@ -12,6 +12,7 @@
 #include "empire/object.h"
 #include "empire/trade_route.h"
 #include "empire/empire_xml.h"
+#include "game/file_io.h"
 #include "scenario/empire.h"
 
 #include <string.h>
@@ -61,7 +62,7 @@ void empire_load(int is_custom_scenario, int empire_id)
         memset(raw_data, 0, EMPIRE_DATA_SIZE);
     }
     buffer_init(&buf, raw_data, EMPIRE_DATA_SIZE);
-    empire_object_load(&buf);
+    empire_object_load(&buf, SCENARIO_LAST_UNVERSIONED);
 }
 
 static void check_scroll_boundaries(void)

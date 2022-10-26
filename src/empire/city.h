@@ -12,7 +12,6 @@ typedef struct {
     int in_use;
     empire_city_type type;
     int name_id;
-    uint8_t city_custom_name[50];
     int route_id;
     int is_open;
     int buys_resource[RESOURCE_MAX];

@@ -370,8 +370,9 @@ int empire_unlock_all_resources(void)
 uint8_t *empire_city_get_name(empire_city *city)
 {
     const uint8_t *str;
-    if (string_length(city->city_custom_name)) {
-        return city->city_custom_name;
+    full_empire_object *full = empire_object_get_full(city->empire_object_id);
+    if (string_length(full->city_custom_name)) {
+        return full->city_custom_name;
     }
     return lang_get_string(21, city->name_id);
 }

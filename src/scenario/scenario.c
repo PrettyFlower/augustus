@@ -224,7 +224,7 @@ void scenario_save_state(buffer *buf)
     buffer_write_u8(buf, scenario.empire.distant_battle_roman_travel_months);
     buffer_write_u8(buf, scenario.empire.distant_battle_enemy_travel_months);
     buffer_write_u8(buf, scenario.open_play_scenario_id);
-    buffer_write_raw(buf, scenario.empire.custom_name, MAX_CUSTOM_EMPIRE_NAME);
+    buffer_write_raw(buf, scenario.empire.custom_name, sizeof(scenario.empire.custom_name));
     buffer_write_u8(buf, 0);
 
     scenario.is_saved = 1;
@@ -438,7 +438,7 @@ void scenario_load_state(buffer *buf, int version)
     scenario.empire.distant_battle_enemy_travel_months = buffer_read_u8(buf);
     scenario.open_play_scenario_id = buffer_read_u8(buf);
     if (version > SCENARIO_LAST_UNVERSIONED) {
-        buffer_read_raw(buf, scenario.empire.custom_name, MAX_CUSTOM_EMPIRE_NAME);
+        buffer_read_raw(buf, scenario.empire.custom_name, sizeof(scenario.empire.custom_name));
     }
     buffer_skip(buf, 1);
 

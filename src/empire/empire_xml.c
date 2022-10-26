@@ -68,7 +68,7 @@ static void xml_parse_city(int num_attrs, const char **attributes)
         return;
     }
 
-    full_empire_object *city_obj = full_empire_object_get(data.next_empire_obj_id);
+    full_empire_object *city_obj = empire_object_get_full(data.next_empire_obj_id);
     city_obj->obj.id = data.next_empire_obj_id;
     data.current_city_id = data.next_empire_obj_id;
     data.next_empire_obj_id++;
@@ -82,7 +82,7 @@ static void xml_parse_city(int num_attrs, const char **attributes)
     city_obj->obj.height = 36;
     data.next_empire_obj_id++;
 
-    full_empire_object *route_obj = full_empire_object_get(city_obj->obj.trade_route_id);
+    full_empire_object *route_obj = empire_object_get_full(city_obj->obj.trade_route_id);
     route_obj->obj.id = city_obj->obj.trade_route_id;
     route_obj->in_use = 1;
     route_obj->obj.type = EMPIRE_OBJECT_LAND_TRADE_ROUTE;
@@ -167,9 +167,9 @@ static void xml_parse_resource(int num_attrs, const char **attributes)
         log_error("Resource not in buy or sell tag", 0, 0);
         return;
     }
-    full_empire_object *city_obj = full_empire_object_get(data.current_city_id);
+    full_empire_object *city_obj = empire_object_get_full(data.current_city_id);
     resource_type resource = RESOURCE_NONE;
-    int amount = 0;
+    int amount = 1;
     for (int i = 0; i < num_attrs; i += 2) {
         char *attr_name = attributes[i];
         char *attr_val = attributes[i + 1];
@@ -192,9 +192,9 @@ static void xml_parse_resource(int num_attrs, const char **attributes)
     }
 
     if (data.current_city_resource_list == LIST_BUYS) {
-        city_obj->city_buys_custom[resource] = amount;
+        city_obj->city_buys_resource[resource] = amount;
     } else if (data.current_city_resource_list == LIST_SELLS) {
-        city_obj->city_sells_custom[resource] = amount;
+        city_obj->city_sells_resource[resource] = amount;
     }
 }
 
@@ -218,7 +218,7 @@ static void xml_parse_battle(int num_attrs, const char **attributes)
         log_error("Invasion path too long", 0, 0);
     }
 
-    full_empire_object *battle_obj = full_empire_object_get(data.next_empire_obj_id);
+    full_empire_object *battle_obj = empire_object_get_full(data.next_empire_obj_id);
     battle_obj->obj.id = data.next_empire_obj_id;
     data.next_empire_obj_id++;
     battle_obj->in_use = 1;
@@ -286,7 +286,7 @@ static void XMLCALL xml_end_element(void *unused, const char *name)
     } else if (strcmp(name, "path") == 0) {
         for (int i = 0; i < data.invasion_path_idx; i++) {
             int idx = data.invasion_path_idx - i - 1;
-            full_empire_object *battle = full_empire_object_get(data.invasion_path_ids[idx]);
+            full_empire_object *battle = empire_object_get_full(data.invasion_path_ids[idx]);
             battle->obj.invasion_years = i + 1;
         }
         memset(data.invasion_path_ids, 0, sizeof(data.invasion_path_ids));
@@ -327,7 +327,7 @@ static int parse_xml(char *buffer, int buffer_length)
     }
 
     for (int i = 0; i < MAX_EMPIRE_OBJECTS; i++) {
-        full_empire_object *trade_city = full_empire_object_get(i);
+        full_empire_object *trade_city = empire_object_get_full(i);
         if (
             !trade_city->in_use ||
             trade_city->obj.type != EMPIRE_OBJECT_CITY ||
@@ -393,33 +393,4 @@ int empire_xml_parse_file(const char *filename)
         log_error("Error parsing file", filename, 0);
     }
     return success;
-}
-
-void empire_xml_save_state(buffer *buf)
-{
-    if (scenario.empire.id != SCENARIO_CUSTOM_EMPIRE) {
-        buffer_write_i32(buf, 0);
-        return;
-    }
-    int xml_length = 0;
-    char *xml_contents = file_to_buffer(scenario.empire.custom_name, &xml_length);
-    int buf_size = xml_length + sizeof(int);
-    uint8_t *buf_data = malloc(buf_size);
-    buffer_init(buf, buf_data, buf_size);
-    buffer_write_i32(buf, xml_length);
-    buffer_write_raw(buf, xml_contents, xml_length);
-    free(xml_contents);
-}
-
-void empire_xml_load_state(buffer *buf)
-{
-    int xml_length = buffer_read_i32(buf);
-    if (!xml_length) {
-        return;
-    }
-    char *xml_contents = malloc(xml_length);
-    memset(xml_contents, 0, xml_length);
-    buffer_read_raw(buf, xml_contents, xml_length);
-    parse_xml(xml_contents, xml_length);
-    free(xml_contents);
 }

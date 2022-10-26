@@ -34,25 +34,22 @@ typedef struct {
     uint8_t city_custom_name[50];
     int trade_route_open;
     int trade_route_cost;
-    int city_sells_resource[10];
-    int city_buys_resource[8];
-    int city_sells_custom[RESOURCE_MAX];
-    int city_buys_custom[RESOURCE_MAX];
-    int trade40;
-    int trade25;
-    int trade15;
+    int city_sells_resource[RESOURCE_MAX];
+    int city_buys_resource[RESOURCE_MAX];
     empire_object obj;
 } full_empire_object;
 
 void empire_object_clear(void);
 
-void empire_object_load(buffer *buf);
+void empire_object_load(buffer *buf, int version);
+
+void empire_object_save(buffer *buf);
 
 void empire_object_init_cities(void);
 
 int empire_object_init_distant_battle_travel_months(int object_type);
 
-const full_empire_object *full_empire_object_get(int object_id);
+const full_empire_object *empire_object_get_full(int object_id);
 
 const empire_object *empire_object_get(int object_id);
 

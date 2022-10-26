@@ -20,6 +20,7 @@
 #include "empire/city.h"
 #include "empire/empire.h"
 #include "empire/empire_xml.h"
+#include "empire/object.h"
 #include "empire/trade_prices.h"
 #include "empire/trade_route.h"
 #include "figure/enemy_army.h"
@@ -481,7 +482,7 @@ static void scenario_load_from_state(scenario_state *file, int version)
     random_load_state(file->random_iv);
     scenario_load_state(file->scenario, version);
     if (version > SCENARIO_LAST_UNVERSIONED) {
-        empire_xml_load_state(file->empire);
+        empire_object_load(file->empire, version);
     }
     buffer_skip(file->end_marker, 4);
 }
@@ -496,7 +497,7 @@ static void scenario_save_to_state(scenario_state *file)
     city_view_save_scenario_state(file->camera);
     random_save_state(file->random_iv);
     scenario_save_state(file->scenario);
-    empire_xml_save_state(file->empire);
+    empire_object_save(file->empire);
     buffer_skip(file->end_marker, 4);
 }
 
@@ -601,7 +602,7 @@ static void savegame_load_from_state(savegame_state *state, int version)
             version > SAVE_GAME_LAST_STATIC_MONUMENT_DELIVERIES_VERSION);
     }
     if (version > SAVE_GAME_LAST_UNVERSIONED_SCENARIOS) {
-        empire_xml_load_state(state->custom_empire);
+        empire_object_load(state->custom_empire, version);
     }
     map_image_clear();
     map_image_update_all();
@@ -686,7 +687,7 @@ static void savegame_save_to_state(savegame_state *state)
     buffer_skip(state->end_marker, 284);
 
     building_monument_delivery_save_state(state->deliveries);
-    empire_xml_save_state(state->custom_empire);
+    empire_object_save(state->custom_empire);
 }
 
 static int get_scenario_version(FILE *fp)
