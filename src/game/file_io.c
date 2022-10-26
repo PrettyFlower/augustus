@@ -198,6 +198,7 @@ typedef struct {
     buffer *city_entry_exit_grid_offset;
     buffer *end_marker;
     buffer *deliveries;
+    buffer *custom_empire;
 } savegame_state;
 
 typedef struct {
@@ -216,6 +217,7 @@ typedef struct {
         int building_storages;
         int monument_deliveries;
         int enemy_armies;
+        int scenario;
     } piece_sizes;
     struct {
         int culture1;
@@ -228,6 +230,7 @@ typedef struct {
     int has_image_grid;
     int has_monument_deliveries;
     int has_barracks_tower_sentry_request;
+    int has_custom_empires;
 } savegame_version_data;
 
 static struct {
@@ -354,6 +357,14 @@ static void get_version_data(savegame_version_data *version_data, int version)
     version_data->has_image_grid = version <= SAVE_GAME_LAST_STORED_IMAGE_IDS;
     version_data->has_monument_deliveries = version > SAVE_GAME_LAST_NO_DELIVERIES_VERSION;
     version_data->has_barracks_tower_sentry_request = version <= SAVE_GAME_LAST_BARRACKS_TOWER_SENTRY_REQUEST;
+
+    if (version > SAVE_GAME_LAST_UNVERSIONED_SCENARIOS) {
+        version_data->piece_sizes.scenario = 1770;
+        version_data->has_custom_empires = 1;
+    } else {
+        version_data->piece_sizes.scenario = 1720;
+        version_data->has_custom_empires = 0;
+    }
 }
 
 static void init_savegame_data(int version)
@@ -406,7 +417,7 @@ static void init_savegame_data(int version)
     state->trade_prices = create_savegame_piece(128, 0);
     state->figure_names = create_savegame_piece(84, 0);
     state->culture_coverage = create_savegame_piece(60, 0);
-    state->scenario = create_savegame_piece(1720, 0);
+    state->scenario = create_savegame_piece(version_data.piece_sizes.scenario, 0);
     state->max_game_year = create_savegame_piece(4, 0);
     state->earthquake = create_savegame_piece(60, 0);
     state->emperor_change_state = create_savegame_piece(4, 0);
@@ -453,6 +464,9 @@ static void init_savegame_data(int version)
     state->end_marker = create_savegame_piece(284, 0); // 71x 4-bytes emptiness
     if (version_data.has_monument_deliveries) {
         state->deliveries = create_savegame_piece(version_data.piece_sizes.monument_deliveries, 0);
+    }
+    if (version_data.has_custom_empires) {
+        state->custom_empire = create_savegame_piece(PIECE_SIZE_DYNAMIC, 1);
     }
 }
 
@@ -586,6 +600,9 @@ static void savegame_load_from_state(savegame_state *state, int version)
         building_monument_delivery_load_state(state->deliveries,
             version > SAVE_GAME_LAST_STATIC_MONUMENT_DELIVERIES_VERSION);
     }
+    if (version > SAVE_GAME_LAST_UNVERSIONED_SCENARIOS) {
+        empire_xml_load_state(state->custom_empire);
+    }
     map_image_clear();
     map_image_update_all();
 }
@@ -669,6 +686,7 @@ static void savegame_save_to_state(savegame_state *state)
     buffer_skip(state->end_marker, 284);
 
     building_monument_delivery_save_state(state->deliveries);
+    empire_xml_save_state(state->custom_empire);
 }
 
 static int get_scenario_version(FILE *fp)
@@ -1098,7 +1116,7 @@ static int savegame_read_file_info(FILE *fp, saved_game_info *info, int version)
     init_file_piece(&random_grid, 26244, 0);
     init_file_piece(&edge_grid, 26244, 0);
     init_file_piece(&bitfields_grid, 26244, 0);
-    init_file_piece(&scenario, 1720, 0);
+    init_file_piece(&scenario, version_data.piece_sizes.scenario, 0);
     init_file_piece(&building_grid, 52488, 0);
     init_file_piece(&buildings, version_data.piece_sizes.buildings, 0);
 
