@@ -392,9 +392,9 @@ static void button_ok_cancel(int is_ok, int param2)
     char filename[FILE_NAME_MAX];
     memset(filename, 0, sizeof(filename));
     if (data.type == FILE_TYPE_EMPIRE) {
-        strncpy("custom_empires/", filename, FILE_NAME_MAX - 1);
+        strncpy(filename, "custom_empires/", FILE_NAME_MAX - 1);
     }
-    strncpy(chosen_filename, filename + string_length(filename), FILE_NAME_MAX - 1);
+    strncat(filename, chosen_filename, FILE_NAME_MAX - 1);
 
     if (data.dialog_type != FILE_DIALOG_SAVE && !file_exists(filename, NOT_LOCALIZED)) {
         data.message_not_exist_start_time = time_get_millis();

@@ -692,13 +692,13 @@ static void savegame_save_to_state(savegame_state *state)
 
 static int get_scenario_version(FILE *fp)
 {
-    uint8_t version_magic[8];
+    char version_magic[8];
     int read = fread(version_magic, 1, 8, fp);
     if (read != sizeof(version_magic)) {
         log_error("Unable to read version header from file", 0, 0);
         return 0;
     }
-    if (!string_equals(version_magic, "VERSION")) {
+    if (strcmp(version_magic, "VERSION") != 0) {
         rewind(fp);
         return SCENARIO_LAST_UNVERSIONED;
     }

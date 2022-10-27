@@ -46,10 +46,11 @@ static int count_xml_attributes(const char **attributes)
 static void xml_parse_empire(int num_attrs, const char **attributes)
 {
     for (int i = 0; i < num_attrs; i += 2) {
-        const uint8_t *attr_name = string_from_ascii(attributes[i]);
-        const uint8_t *attr_val = string_from_ascii(attributes[i + 1]);
-        if (string_equals(attr_name, "version")) {
-            data.version = string_to_int(attr_val);
+        const char *attr_name = attributes[i];
+        const char *attr_val = attributes[i + 1];
+        const uint8_t *attr_val_s = string_from_ascii(attr_val);
+        if (strcmp(attr_name, "version") == 0) {
+            data.version = string_to_int(attr_val_s);
         }
     }
 
@@ -90,23 +91,24 @@ static void xml_parse_city(int num_attrs, const char **attributes)
     route_obj->obj.image_id = image_group(GROUP_EMPIRE_TRADE_ROUTE_TYPE) + 1;
 
     for (int i = 0; i < num_attrs; i += 2) {
-        const uint8_t *attr_name = string_from_ascii(attributes[i]);
-        const uint8_t *attr_val = string_from_ascii(attributes[i + 1]);
-        if (string_equals(attr_name, "name")) {
-            string_copy(city_obj->city_custom_name, attr_val, sizeof(city_obj->city_custom_name));
-        } else if (string_equals(attr_name, "x")) {
-            city_obj->obj.x = string_to_int(attr_val);
-        } else if (string_equals(attr_name, "y")) {
-            city_obj->obj.y = string_to_int(attr_val);
-        } else if (string_equals(attr_name, "ours") && string_equals(attr_val, "true")) {
+        const char *attr_name = attributes[i];
+        const char *attr_val = attributes[i + 1];
+        const uint8_t *attr_val_s = string_from_ascii(attr_val);
+        if (strcmp(attr_name, "name") == 0) {
+            string_copy(city_obj->city_custom_name, attr_val_s, sizeof(city_obj->city_custom_name));
+        } else if (strcmp(attr_name, "x") == 0) {
+            city_obj->obj.x = string_to_int(attr_val_s);
+        } else if (strcmp(attr_name, "y") == 0) {
+            city_obj->obj.y = string_to_int(attr_val_s);
+        } else if (strcmp(attr_name, "ours") == 0 && strcmp(attr_val, "true") == 0) {
             city_obj->city_type = EMPIRE_CITY_OURS;
             city_obj->obj.image_id = image_group(GROUP_EMPIRE_CITY);
-        } else if (string_equals(attr_name, "trade_route_cost")) {
-            city_obj->trade_route_cost = string_to_int(attr_val);
-        } else if (string_equals(attr_name, "trade_by_sea")) {
+        } else if (strcmp(attr_name, "trade_route_cost") == 0) {
+            city_obj->trade_route_cost = string_to_int(attr_val_s);
+        } else if (strcmp(attr_name, "trade_by_sea") == 0) {
             route_obj->obj.type = EMPIRE_OBJECT_SEA_TRADE_ROUTE;
             route_obj->obj.image_id--;
-        } else if (string_equals(attr_name, "distant") && string_equals(attr_val, "true")) {
+        } else if (strcmp(attr_name, "distant") == 0 && strcmp(attr_val, "true") == 0) {
             city_obj->city_type = EMPIRE_CITY_DISTANT_ROMAN;
             city_obj->obj.image_id = assets_get_image_id("UI", "Village");
         }
@@ -119,37 +121,37 @@ static void xml_parse_city(int num_attrs, const char **attributes)
     }
 }
 
-static resource_type string_to_resource(const uint8_t *name)
+static resource_type string_to_resource(const char *name)
 {
-    if (string_equals(name, "wheat")) {
+    if (strcmp(name, "wheat") == 0) {
         return RESOURCE_WHEAT;
-    } else if (string_equals(name, "vegetables")) {
+    } else if (strcmp(name, "vegetables") == 0) {
         return RESOURCE_VEGETABLES;
-    } else if (string_equals(name, "fruit")) {
+    } else if (strcmp(name, "fruit") == 0) {
         return RESOURCE_FRUIT;
-    } else if (string_equals(name, "olives")) {
+    } else if (strcmp(name, "olives") == 0) {
         return RESOURCE_OLIVES;
-    } else if (string_equals(name, "vines")) {
+    } else if (strcmp(name, "vines") == 0) {
         return RESOURCE_VINES;
-    } else if (string_equals(name, "meat") || string_equals(name, "fish")) {
+    } else if (strcmp(name, "meat") == 0 || strcmp(name, "fish") == 0) {
         return RESOURCE_MEAT;
-    } else if (string_equals(name, "wine")) {
+    } else if (strcmp(name, "wine") == 0) {
         return RESOURCE_WINE;
-    } else if (string_equals(name, "oil")) {
+    } else if (strcmp(name, "oil") == 0) {
         return RESOURCE_OIL;
-    } else if (string_equals(name, "iron")) {
+    } else if (strcmp(name, "iron") == 0) {
         return RESOURCE_IRON;
-    } else if (string_equals(name, "timber") || string_equals(name, "wood")) {
+    } else if (strcmp(name, "timber") == 0 || strcmp(name, "wood") == 0) {
         return RESOURCE_TIMBER;
-    } else if (string_equals(name, "clay")) {
+    } else if (strcmp(name, "clay") == 0) {
         return RESOURCE_CLAY;
-    } else if (string_equals(name, "marble")) {
+    } else if (strcmp(name, "marble") == 0) {
         return RESOURCE_MARBLE;
-    } else if (string_equals(name, "weapons")) {
+    } else if (strcmp(name, "weapons") == 0) {
         return RESOURCE_WEAPONS;
-    } else if (string_equals(name, "furniture")) {
+    } else if (strcmp(name, "furniture") == 0) {
         return RESOURCE_FURNITURE;
-    } else if (string_equals(name, "pottery")) {
+    } else if (strcmp(name, "pottery") == 0) {
         return RESOURCE_POTTERY;
     } else {
         return RESOURCE_NONE;
@@ -171,17 +173,18 @@ static void xml_parse_resource(int num_attrs, const char **attributes)
     resource_type resource = RESOURCE_NONE;
     int amount = 1;
     for (int i = 0; i < num_attrs; i += 2) {
-        const uint8_t *attr_name = string_from_ascii(attributes[i]);
-        const uint8_t *attr_val = string_from_ascii(attributes[i + 1]);
-        if (string_equals(attr_name, "type")) {
+        const char *attr_name = attributes[i];
+        const char *attr_val = attributes[i + 1];
+        const uint8_t *attr_val_s = string_from_ascii(attr_val);
+        if (strcmp(attr_name, "type") == 0) {
             resource = string_to_resource(attr_val);
             if (resource == RESOURCE_NONE) {
                 data.success = 0;
                 log_error("Unable to determine resource type", attr_val, 0);
                 return;
             }
-        } else if (string_equals(attr_name, "amount")) {
-            amount = string_to_int(attr_val);
+        } else if (strcmp(attr_name, "amount") == 0) {
+            amount = string_to_int(attr_val_s);
         }
     }
 
@@ -228,12 +231,13 @@ static void xml_parse_battle(int num_attrs, const char **attributes)
     data.invasion_path_ids[data.invasion_path_idx] = battle_obj->obj.id;
     data.invasion_path_idx++;
     for (int i = 0; i < num_attrs; i += 2) {
-        const uint8_t *attr_name = string_from_ascii(attributes[i]);
-        const uint8_t *attr_val = string_from_ascii(attributes[i + 1]);
-        if (string_equals(attr_name, "x")) {
-            battle_obj->obj.x = string_to_int(attr_val);
-        } else if (string_equals(attr_name, "y")) {
-            battle_obj->obj.y = string_to_int(attr_val);
+        const char *attr_name = attributes[i];
+        const char *attr_val = attributes[i + 1];
+        const uint8_t *attr_val_s = string_from_ascii(attr_val);
+        if (strcmp(attr_name, "x") == 0) {
+            battle_obj->obj.x = string_to_int(attr_val_s);
+        } else if (strcmp(attr_name, "y") == 0) {
+            battle_obj->obj.y = string_to_int(attr_val_s);
         }
     }
 }
