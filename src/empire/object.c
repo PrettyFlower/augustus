@@ -130,7 +130,6 @@ void empire_object_load(buffer *buf, int version)
         if (version > SCENARIO_LAST_UNVERSIONED) {
             buffer_read_raw(buf, full->city_custom_name, sizeof(full->city_custom_name));
         }
-        int a = 0;
     }
 
     fix_image_ids();
@@ -196,7 +195,6 @@ void empire_object_save(buffer *buf)
         buffer_skip(buf, 6);
         buffer_write_raw(buf, full->city_custom_name, sizeof(full->city_custom_name));
     }
-    int a = 0;
 }
 
 void empire_object_init_cities(void)
@@ -266,12 +264,12 @@ int empire_object_init_distant_battle_travel_months(int object_type)
     return month;
 }
 
-const full_empire_object *empire_object_get_full(int object_id)
+full_empire_object *empire_object_get_full(int object_id)
 {
     return &objects[object_id];
 }
 
-const empire_object *empire_object_get(int object_id)
+empire_object *empire_object_get(int object_id)
 {
     return &objects[object_id].obj;
 }
@@ -404,14 +402,6 @@ void empire_object_city_force_sell_resource(int object_id, int resource)
         }
     }
     
-}
-
-static int is_trade_city(int index)
-{
-    if (objects[index].obj.type != EMPIRE_OBJECT_CITY) {
-        return 0;
-    }
-    return objects[index].city_type > EMPIRE_CITY_OURS && objects[index].city_type < EMPIRE_CITY_FUTURE_ROMAN;
 }
 
 int is_sea_trade_route(int route_id)

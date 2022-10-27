@@ -49,9 +49,9 @@ void empire_object_init_cities(void);
 
 int empire_object_init_distant_battle_travel_months(int object_type);
 
-const full_empire_object *empire_object_get_full(int object_id);
+full_empire_object *empire_object_get_full(int object_id);
 
-const empire_object *empire_object_get(int object_id);
+empire_object *empire_object_get(int object_id);
 
 const empire_object *empire_object_get_our_city(void);
 

@@ -199,7 +199,7 @@ static void init(file_type type, file_dialog_type dialog_type)
     scrollbar_init(&scrollbar, 0, data.file_list->num_files);
     scroll_to_typed_text();
 
-    strncpy(data.selected_file, data.file_data->last_loaded_file, FILE_NAME_MAX);
+    strncpy(data.selected_file, data.file_data->last_loaded_file, FILE_NAME_MAX - 1);
     input_box_start(&file_name_input);
 }
 
@@ -392,9 +392,9 @@ static void button_ok_cancel(int is_ok, int param2)
     char filename[FILE_NAME_MAX];
     memset(filename, 0, sizeof(filename));
     if (data.type == FILE_TYPE_EMPIRE) {
-        string_copy("custom_empires/", filename, FILE_NAME_MAX);
+        strncpy("custom_empires/", filename, FILE_NAME_MAX - 1);
     }
-    string_copy(chosen_filename, filename + string_length(filename), FILE_NAME_MAX);
+    strncpy(chosen_filename, filename + string_length(filename), FILE_NAME_MAX - 1);
 
     if (data.dialog_type != FILE_DIALOG_SAVE && !file_exists(filename, NOT_LOCALIZED)) {
         data.message_not_exist_start_time = time_get_millis();
@@ -425,7 +425,7 @@ static void button_ok_cancel(int is_ok, int param2)
         } else if (data.type == FILE_TYPE_EMPIRE) {
             int result = empire_xml_parse_file(filename);
             if (result) {
-                scenario_editor_set_custom_empire(filename);
+                scenario_editor_set_custom_empire(string_from_ascii(filename));
                 window_editor_empire_show();
             } else {
                 window_plain_message_dialog_show(TR_EDITOR_UNABLE_TO_LOAD_EMPIRE_TITLE, TR_EDITOR_UNABLE_TO_LOAD_EMPIRE_MESSAGE, 1);

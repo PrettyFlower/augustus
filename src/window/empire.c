@@ -1,5 +1,6 @@
 #include "empire.h"
 
+#include "assets/assets.h"
 #include "building/menu.h"
 #include "city/military.h"
 #include "city/warning.h"
@@ -328,8 +329,8 @@ static void draw_background(void)
 
 void window_empire_draw_trade_dots(const empire_object *trade_route, int x_draw_offset, int y_draw_offset)
 {
-    empire_object *our_city = empire_object_get_our_city();
-    empire_object *trade_city = empire_object_get_trade_city(trade_route->trade_route_id);
+    const empire_object *our_city = empire_object_get_our_city();
+    const empire_object *trade_city = empire_object_get_trade_city(trade_route->trade_route_id);
 
     int x_diff = trade_city->x - our_city->x;
     int y_diff = trade_city->y - our_city->y;

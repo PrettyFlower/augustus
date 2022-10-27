@@ -693,8 +693,12 @@ static void savegame_save_to_state(savegame_state *state)
 static int get_scenario_version(FILE *fp)
 {
     uint8_t version_magic[8];
-    fread(version_magic, 1, 8, fp);
-    if (strcmp(version_magic, "VERSION") != 0) {
+    int read = fread(version_magic, 1, 8, fp);
+    if (read != sizeof(version_magic)) {
+        log_error("Unable to read version header from file", 0, 0);
+        return 0;
+    }
+    if (!string_equals(version_magic, "VERSION")) {
         rewind(fp);
         return SCENARIO_LAST_UNVERSIONED;
     }
@@ -702,7 +706,11 @@ static int get_scenario_version(FILE *fp)
     buffer buf;
     uint8_t version_data[4];
     buffer_init(&buf, version_data, 4);
-    fread(version_data, 1, 4, fp);
+    read = fread(version_data, 1, 4, fp);
+    if (read != sizeof(version_data)) {
+        log_error("Unable to read version number from file", 0, 0);
+        return 0;
+    }
     return buffer_read_i32(&buf);
 }
 
@@ -751,7 +759,7 @@ static int read_compressed_chunk(FILE *fp, void *buffer, int bytes_to_read, int 
 static int read_compressed_savegame_chunk(FILE *fp, void *buffer, int bytes_to_read, int version)
 {
     int read_as_zlib = version > SAVE_GAME_LAST_ZIP_COMPRESSION;
-    read_compressed_chunk(fp, buffer, bytes_to_read, read_as_zlib);
+    return read_compressed_chunk(fp, buffer, bytes_to_read, read_as_zlib);
 }
 
 static int write_compressed_chunk(FILE *fp, void *buffer, int bytes_to_write)
@@ -928,7 +936,7 @@ int game_file_io_write_scenario(const char *filename)
         return 0;
     }
     uint8_t header[8];
-    string_copy("VERSION", header, 8);
+    string_copy(string_from_ascii("VERSION"), header, sizeof(header));
     fwrite(header, 1, 8, fp);
     write_int32(fp, SCENARIO_CURRENT_VERSION);
     for (int i = 0; i < scenario_data.num_pieces; i++) {

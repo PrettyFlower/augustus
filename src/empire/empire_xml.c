@@ -46,9 +46,9 @@ static int count_xml_attributes(const char **attributes)
 static void xml_parse_empire(int num_attrs, const char **attributes)
 {
     for (int i = 0; i < num_attrs; i += 2) {
-        char *attr_name = attributes[i];
-        char *attr_val = attributes[i + 1];
-        if (strcmp(attr_name, "version") == 0) {
+        const uint8_t *attr_name = string_from_ascii(attributes[i]);
+        const uint8_t *attr_val = string_from_ascii(attributes[i + 1]);
+        if (string_equals(attr_name, "version")) {
             data.version = string_to_int(attr_val);
         }
     }
@@ -90,23 +90,23 @@ static void xml_parse_city(int num_attrs, const char **attributes)
     route_obj->obj.image_id = image_group(GROUP_EMPIRE_TRADE_ROUTE_TYPE) + 1;
 
     for (int i = 0; i < num_attrs; i += 2) {
-        char *attr_name = attributes[i];
-        char *attr_val = attributes[i + 1];
-        if (strcmp(attr_name, "name") == 0) {
-            strcpy(city_obj->city_custom_name, attr_val);
-        } else if (strcmp(attr_name, "x") == 0) {
+        const uint8_t *attr_name = string_from_ascii(attributes[i]);
+        const uint8_t *attr_val = string_from_ascii(attributes[i + 1]);
+        if (string_equals(attr_name, "name")) {
+            string_copy(city_obj->city_custom_name, attr_val, sizeof(city_obj->city_custom_name));
+        } else if (string_equals(attr_name, "x")) {
             city_obj->obj.x = string_to_int(attr_val);
-        } else if (strcmp(attr_name, "y") == 0) {
+        } else if (string_equals(attr_name, "y")) {
             city_obj->obj.y = string_to_int(attr_val);
-        } else if (strcmp(attr_name, "ours") == 0 && strcmp(attr_val, "true") == 0) {
+        } else if (string_equals(attr_name, "ours") && string_equals(attr_val, "true")) {
             city_obj->city_type = EMPIRE_CITY_OURS;
             city_obj->obj.image_id = image_group(GROUP_EMPIRE_CITY);
-        } else if (strcmp(attr_name, "trade_route_cost") == 0) {
+        } else if (string_equals(attr_name, "trade_route_cost")) {
             city_obj->trade_route_cost = string_to_int(attr_val);
-        } else if (strcmp(attr_name, "trade_by_sea") == 0) {
+        } else if (string_equals(attr_name, "trade_by_sea")) {
             route_obj->obj.type = EMPIRE_OBJECT_SEA_TRADE_ROUTE;
             route_obj->obj.image_id--;
-        } else if (strcmp(attr_name, "distant") == 0 && strcmp(attr_val, "true") == 0) {
+        } else if (string_equals(attr_name, "distant") && string_equals(attr_val, "true")) {
             city_obj->city_type = EMPIRE_CITY_DISTANT_ROMAN;
             city_obj->obj.image_id = assets_get_image_id("UI", "Village");
         }
@@ -119,37 +119,37 @@ static void xml_parse_city(int num_attrs, const char **attributes)
     }
 }
 
-static resource_type string_to_resource(const char *name)
+static resource_type string_to_resource(const uint8_t *name)
 {
-    if (strcmp(name, "wheat") == 0) {
+    if (string_equals(name, "wheat")) {
         return RESOURCE_WHEAT;
-    } else if (strcmp(name, "vegetables") == 0) {
+    } else if (string_equals(name, "vegetables")) {
         return RESOURCE_VEGETABLES;
-    } else if (strcmp(name, "fruit") == 0) {
+    } else if (string_equals(name, "fruit")) {
         return RESOURCE_FRUIT;
-    } else if (strcmp(name, "olives") == 0) {
+    } else if (string_equals(name, "olives")) {
         return RESOURCE_OLIVES;
-    } else if (strcmp(name, "vines") == 0) {
+    } else if (string_equals(name, "vines")) {
         return RESOURCE_VINES;
-    } else if (strcmp(name, "meat") == 0 || strcmp(name, "fish") == 0) {
+    } else if (string_equals(name, "meat") || string_equals(name, "fish")) {
         return RESOURCE_MEAT;
-    } else if (strcmp(name, "wine") == 0) {
+    } else if (string_equals(name, "wine")) {
         return RESOURCE_WINE;
-    } else if (strcmp(name, "oil") == 0) {
+    } else if (string_equals(name, "oil")) {
         return RESOURCE_OIL;
-    } else if (strcmp(name, "iron") == 0) {
+    } else if (string_equals(name, "iron")) {
         return RESOURCE_IRON;
-    } else if (strcmp(name, "timber") == 0 || strcmp(name, "wood") == 0) {
+    } else if (string_equals(name, "timber") || string_equals(name, "wood")) {
         return RESOURCE_TIMBER;
-    } else if (strcmp(name, "clay") == 0) {
+    } else if (string_equals(name, "clay")) {
         return RESOURCE_CLAY;
-    } else if (strcmp(name, "marble") == 0) {
+    } else if (string_equals(name, "marble")) {
         return RESOURCE_MARBLE;
-    } else if (strcmp(name, "weapons") == 0) {
+    } else if (string_equals(name, "weapons")) {
         return RESOURCE_WEAPONS;
-    } else if (strcmp(name, "furniture") == 0) {
+    } else if (string_equals(name, "furniture")) {
         return RESOURCE_FURNITURE;
-    } else if (strcmp(name, "pottery") == 0) {
+    } else if (string_equals(name, "pottery")) {
         return RESOURCE_POTTERY;
     } else {
         return RESOURCE_NONE;
@@ -171,16 +171,16 @@ static void xml_parse_resource(int num_attrs, const char **attributes)
     resource_type resource = RESOURCE_NONE;
     int amount = 1;
     for (int i = 0; i < num_attrs; i += 2) {
-        char *attr_name = attributes[i];
-        char *attr_val = attributes[i + 1];
-        if (strcmp(attr_name, "type") == 0) {
+        const uint8_t *attr_name = string_from_ascii(attributes[i]);
+        const uint8_t *attr_val = string_from_ascii(attributes[i + 1]);
+        if (string_equals(attr_name, "type")) {
             resource = string_to_resource(attr_val);
             if (resource == RESOURCE_NONE) {
                 data.success = 0;
                 log_error("Unable to determine resource type", attr_val, 0);
                 return;
             }
-        } else if (strcmp(attr_name, "amount") == 0) {
+        } else if (string_equals(attr_name, "amount")) {
             amount = string_to_int(attr_val);
         }
     }
@@ -198,7 +198,7 @@ static void xml_parse_resource(int num_attrs, const char **attributes)
     }
 }
 
-static void xml_parse_invasion_path()
+static void xml_parse_invasion_path(void)
 {
     data.current_invasion_path_id++;
 }
@@ -228,11 +228,11 @@ static void xml_parse_battle(int num_attrs, const char **attributes)
     data.invasion_path_ids[data.invasion_path_idx] = battle_obj->obj.id;
     data.invasion_path_idx++;
     for (int i = 0; i < num_attrs; i += 2) {
-        char *attr_name = attributes[i];
-        char *attr_val = attributes[i + 1];
-        if (strcmp(attr_name, "x") == 0) {
+        const uint8_t *attr_name = string_from_ascii(attributes[i]);
+        const uint8_t *attr_val = string_from_ascii(attributes[i + 1]);
+        if (string_equals(attr_name, "x")) {
             battle_obj->obj.x = string_to_int(attr_val);
-        } else if (strcmp(attr_name, "y") == 0) {
+        } else if (string_equals(attr_name, "y")) {
             battle_obj->obj.y = string_to_int(attr_val);
         }
     }
@@ -320,7 +320,7 @@ static int parse_xml(char *buffer, int buffer_length)
         return 0;
     }
 
-    empire_object *our_city = empire_object_get_our_city();
+    const empire_object *our_city = empire_object_get_our_city();
     if (!our_city) {
         log_error("No home city specified", 0, 0);
         return 0;

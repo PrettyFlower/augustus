@@ -367,9 +367,8 @@ int empire_unlock_all_resources(void)
 	return 0;
 }
 
-uint8_t *empire_city_get_name(empire_city *city)
+const uint8_t *empire_city_get_name(const empire_city *city)
 {
-    const uint8_t *str;
     full_empire_object *full = empire_object_get_full(city->empire_object_id);
     if (string_length(full->city_custom_name)) {
         return full->city_custom_name;
