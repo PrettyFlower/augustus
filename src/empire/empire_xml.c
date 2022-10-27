@@ -95,7 +95,7 @@ static void xml_parse_city(int num_attrs, const char **attributes)
         const char *attr_val = attributes[i + 1];
         const uint8_t *attr_val_s = string_from_ascii(attr_val);
         if (strcmp(attr_name, "name") == 0) {
-            string_copy(city_obj->city_custom_name, attr_val_s, sizeof(city_obj->city_custom_name));
+            string_copy(attr_val_s, city_obj->city_custom_name, sizeof(city_obj->city_custom_name));
         } else if (strcmp(attr_name, "x") == 0) {
             city_obj->obj.x = string_to_int(attr_val_s);
         } else if (strcmp(attr_name, "y") == 0) {
