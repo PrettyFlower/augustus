@@ -120,8 +120,11 @@ typedef struct {
     int month;
     int resource;
     int route_id;
-    int is_rise;
+    int amount;
 } demand_change_t;
+
+#define DEMAND_CHANGE_LEGACY_IS_RISE 9999
+#define DEMAND_CHANGE_LEGACY_IS_FALL -9999
 
 typedef struct {
     struct win_criteria_t population;

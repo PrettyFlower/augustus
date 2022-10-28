@@ -30,7 +30,7 @@ typedef struct {
     int year;
     int resource;
     int route_id;
-    int is_rise;
+    int amount;
 } editor_demand_change;
 
 void scenario_editor_create(int map_size);

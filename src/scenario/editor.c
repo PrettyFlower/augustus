@@ -249,7 +249,7 @@ void scenario_editor_demand_change_get(int index, editor_demand_change *demand_c
     demand_change->year = scenario.demand_changes[index].year;
     demand_change->resource = scenario.demand_changes[index].resource;
     demand_change->route_id = scenario.demand_changes[index].route_id;
-    demand_change->is_rise = scenario.demand_changes[index].is_rise;
+    demand_change->amount = scenario.demand_changes[index].amount;
 }
 
 static void sort_demand_changes(void)
@@ -277,7 +277,7 @@ void scenario_editor_demand_change_delete(int index)
     scenario.demand_changes[index].year = 0;
     scenario.demand_changes[index].resource = 0;
     scenario.demand_changes[index].route_id = 0;
-    scenario.demand_changes[index].is_rise = 0;
+    scenario.demand_changes[index].amount = 0;
     sort_demand_changes();
     scenario.is_saved = 0;
 }
@@ -287,7 +287,7 @@ void scenario_editor_demand_change_save(int index, editor_demand_change *demand_
     scenario.demand_changes[index].year = demand_change->year;
     scenario.demand_changes[index].resource = demand_change->resource;
     scenario.demand_changes[index].route_id = demand_change->route_id;
-    scenario.demand_changes[index].is_rise = demand_change->is_rise;
+    scenario.demand_changes[index].amount = demand_change->amount;
     sort_demand_changes();
     scenario.is_saved = 0;
 }

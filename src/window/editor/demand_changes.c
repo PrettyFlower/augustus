@@ -76,7 +76,8 @@ static void draw_foreground(void)
             image_draw(image_group(GROUP_EDITOR_RESOURCE_ICONS) + offset, x + 115, y + 3, COLOR_MASK_NONE, SCALE_NONE);
             int width = lang_text_draw(44, 97, x + 140, y + 6, FONT_NORMAL_BLACK);
             width += text_draw_number(demand_change.route_id, '@', " ", x + 140 + width, y + 6, FONT_NORMAL_BLACK, 0);
-            lang_text_draw(44, demand_change.is_rise ? 99 : 98, x + 140 + width, y + 6, FONT_NORMAL_BLACK);
+            char amount_prefix = demand_change.amount > 0 ? '+' : '@';
+            text_draw_number(demand_change.amount, amount_prefix, " ", x + 140 + width, y + 6, FONT_NORMAL_BLACK, 0);
         } else {
             lang_text_draw_centered(44, 96, x, y + 6, 290, FONT_NORMAL_BLACK);
         }

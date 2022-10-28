@@ -97,7 +97,7 @@ void scenario_save_state(buffer *buf)
         buffer_write_u8(buf, scenario.demand_changes[i].route_id);
     }
     for (int i = 0; i < MAX_DEMAND_CHANGES; i++) {
-        buffer_write_u8(buf, scenario.demand_changes[i].is_rise);
+        buffer_write_i32(buf, scenario.demand_changes[i].amount);
     }
 
     // price changes
@@ -309,8 +309,17 @@ void scenario_load_state(buffer *buf, int version)
     for (int i = 0; i < MAX_DEMAND_CHANGES; i++) {
         scenario.demand_changes[i].route_id = buffer_read_u8(buf);
     }
-    for (int i = 0; i < MAX_DEMAND_CHANGES; i++) {
-        scenario.demand_changes[i].is_rise = buffer_read_u8(buf);
+    if (version <= SCENARIO_LAST_UNVERSIONED) {
+        for (int i = 0; i < MAX_DEMAND_CHANGES; i++) {
+            int is_rise = buffer_read_u8(buf);
+            int amount = is_rise ? DEMAND_CHANGE_LEGACY_IS_RISE : DEMAND_CHANGE_LEGACY_IS_FALL;
+            scenario.demand_changes[i].amount = amount;
+        }
+    }
+    else {
+        for (int i = 0; i < MAX_DEMAND_CHANGES; i++) {
+            scenario.demand_changes[i].amount = buffer_read_i32(buf);
+        }
     }
 
     // price changes

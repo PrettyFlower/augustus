@@ -26,7 +26,8 @@
 static void button_year(int param1, int param2);
 static void button_resource(int param1, int param2);
 static void button_route(int param1, int param2);
-static void button_toggle_rise(int param1, int param2);
+static void button_sign(int param1, int param2);
+static void button_amount(int param1, int param2);
 static void button_delete(int param1, int param2);
 static void button_save(int param1, int param2);
 
@@ -34,7 +35,8 @@ static generic_button buttons[] = {
     {30, 152, 60, 25, button_year, button_none},
     {190, 152, 120, 25, button_resource, button_none},
     {420, 152, 200, 25, button_route, button_none},
-    {350, 192, 100, 25, button_toggle_rise, button_none},
+    {300, 192, 50, 25, button_sign, button_none},
+    {350, 192, 100, 25, button_amount, button_none},
     {30, 230, 250, 25, button_delete, button_none},
     {320, 230, 100, 25, button_save, button_none}
 };
@@ -45,6 +47,7 @@ static uint8_t route_display_names[MAX_ROUTES][NAME_LENGTH];
 static struct {
     int id;
     editor_demand_change demand_change;
+    int is_positive;
     int focus_button_id;
     int route_ids[MAX_ROUTES];
     const uint8_t *route_names[MAX_ROUTES];
@@ -65,6 +68,8 @@ static void init(int id)
 {
     data.id = id;
     scenario_editor_demand_change_get(id, &data.demand_change);
+    data.is_positive = data.demand_change.amount >= 0 ? 1 : 0;
+    data.demand_change.amount = abs(data.demand_change.amount);
 
     data.num_routes = 0;
     for (int i = 1; i < MAX_ROUTES; i++) {
@@ -106,13 +111,15 @@ static void draw_foreground(void)
     text_draw_centered(route_display_names[data.demand_change.route_id], 420, 158, 200, FONT_NORMAL_BLACK, 0);
 
     lang_text_draw(44, 100, 60, 198, FONT_NORMAL_BLACK);
-    button_border_draw(350, 192, 100, 25, data.focus_button_id == 4);
-    lang_text_draw_centered(44, data.demand_change.is_rise ? 99 : 98, 350, 198, 100, FONT_NORMAL_BLACK);
+    button_border_draw(300, 192, 50, 25, data.focus_button_id == 4);
+    text_draw_centered(data.is_positive ? "+" : "-", 300, 198, 50, FONT_NORMAL_BLACK, 0);
+    button_border_draw(350, 192, 100, 25, data.focus_button_id == 5);
+    text_draw_number_centered(data.demand_change.amount, 350, 198, 100, FONT_NORMAL_BLACK);
 
-    button_border_draw(30, 230, 250, 25, data.focus_button_id == 5);
+    button_border_draw(30, 230, 250, 25, data.focus_button_id == 6);
     lang_text_draw_centered(44, 101, 30, 236, 250, FONT_NORMAL_BLACK);
 
-    button_border_draw(320, 230, 100, 25, data.focus_button_id == 6);
+    button_border_draw(320, 230, 100, 25, data.focus_button_id == 7);
     lang_text_draw_centered(18, 3, 320, 236, 100, FONT_NORMAL_BLACK);
 
     graphics_reset_dialog();
@@ -120,7 +127,7 @@ static void draw_foreground(void)
 
 static void handle_input(const mouse *m, const hotkeys *h)
 {
-    if (generic_buttons_handle_mouse(mouse_in_dialog(m), 0, 0, buttons, 6, &data.focus_button_id)) {
+    if (generic_buttons_handle_mouse(mouse_in_dialog(m), 0, 0, buttons, 7, &data.focus_button_id)) {
         return;
     }
     if (input_go_back_requested(m, h)) {
@@ -159,9 +166,19 @@ static void button_route(int param1, int param2)
         data.route_names, data.num_routes, set_route_id);
 }
 
-static void button_toggle_rise(int param1, int param2)
+static void button_sign(int param1, int param2)
 {
-    data.demand_change.is_rise = !data.demand_change.is_rise;
+    data.is_positive = data.is_positive ? 0 : 1;
+}
+
+static void set_change_amount(int value)
+{
+    data.demand_change.amount = value;
+}
+
+static void button_amount(int param1, int param2)
+{
+    window_numeric_input_show(screen_dialog_offset_x() + 100, screen_dialog_offset_y() + 50, 3, 999, set_change_amount);
 }
 
 static void button_delete(int param1, int param2)
@@ -172,6 +189,8 @@ static void button_delete(int param1, int param2)
 
 static void button_save(int param1, int param2)
 {
+    if (!data.is_positive)
+        data.demand_change.amount *= -1;
     scenario_editor_demand_change_save(data.id, &data.demand_change);
     window_editor_demand_changes_show();
 }
