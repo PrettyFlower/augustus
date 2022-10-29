@@ -51,18 +51,33 @@ static void draw_background(void)
     window_editor_map_draw_all();
 }
 
-static int get_last_amount(editor_demand_change *change, int idx)
+static int calc_current_trade(editor_demand_change *change, int idx)
 {
-    int last_amount = trade_route_limit(change->route_id, change->resource);
-    for (int i = 0; i < MAX_DEMAND_CHANGES; i++) {
-        if (i >= idx) {
-            break;
+    int amount = trade_route_limit(change->route_id, change->resource);
+    for (int i = 0; i < MAX_DEMAND_CHANGES && i <= idx; i++) {
+        editor_demand_change change;
+        scenario_editor_demand_change_get(i, &change);
+        if (change.amount == DEMAND_CHANGE_LEGACY_IS_RISE) {
+            if (amount == 0) {
+                amount = 15;
+            } else if (amount == 15) {
+                amount = 25;
+            } else if (amount == 25) {
+                amount = 40;
+            }
+        } else if (change.amount == DEMAND_CHANGE_LEGACY_IS_FALL) {
+            if (amount == 40) {
+                amount = 25;
+            } else if (amount == 25) {
+                amount = 15;
+            } else if (amount == 15) {
+                amount = 0;
+            }
+        } else {
+            amount = change.amount;
         }
-        editor_demand_change last_change;
-        scenario_editor_demand_change_get(i, &last_change);
-        last_amount = last_change.amount;
     }
-    return last_amount;
+    return amount;
 }
 
 static void draw_foreground(void)
@@ -92,9 +107,10 @@ static void draw_foreground(void)
             image_draw(image_group(GROUP_EDITOR_RESOURCE_ICONS) + offset, x + 115, y + 3, COLOR_MASK_NONE, SCALE_NONE);
             int width = lang_text_draw(CUSTOM_TRANSLATION, TR_EDITOR_SHORT_ROUTE_TEXT, x + 140, y + 6, FONT_NORMAL_BLACK);
             width += text_draw_number(demand_change.route_id, '@', " ", x + 140 + width, y + 6, FONT_NORMAL_BLACK, 0);
-            width += text_draw_number(demand_change.amount, '@', " ", x + 140 + width, y + 6, FONT_NORMAL_BLACK, 0);
-            int last_amount = get_last_amount(&demand_change, i);
-            width += text_draw_number(demand_change.amount - last_amount, '(', ")", x + 140 + width, y + 6, FONT_NORMAL_BLACK, 0);
+            int amount = calc_current_trade(&demand_change, i);
+            width += text_draw_number(amount, '@', " ", x + 140 + width, y + 6, FONT_NORMAL_BLACK, 0);
+            int last_amount = calc_current_trade(&demand_change, i - 1);
+            width += text_draw_number(amount - last_amount, '(', ")", x + 140 + width, y + 6, FONT_NORMAL_BLACK, 0);
         } else {
             lang_text_draw_centered(44, 96, x, y + 6, 290, FONT_NORMAL_BLACK);
         }

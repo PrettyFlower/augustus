@@ -65,7 +65,6 @@ static void init(int id)
 {
     data.id = id;
     scenario_editor_demand_change_get(id, &data.demand_change);
-    data.demand_change.amount = data.demand_change.amount;
 
     data.num_routes = 0;
     for (int i = 1; i < MAX_ROUTES; i++) {
