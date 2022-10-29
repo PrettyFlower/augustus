@@ -25,7 +25,7 @@ int trade_route_traded(int route_id, resource_type resource)
     return data[route_id][resource].traded;
 }
 
-trade_route_set_limit(int route_id, resource_type resource, int amount)
+void trade_route_set_limit(int route_id, resource_type resource, int amount)
 {
     data[route_id][resource].limit = amount;
 }
