@@ -793,13 +793,13 @@ static int prepare_dynamic_piece(FILE *fp, file_piece *piece)
     return 1;
 }
 
-static int load_scenario_to_buffers(const char *filename)
+static int load_scenario_to_buffers(const char *filename, int *version)
 {
     FILE *fp = file_open(dir_get_file(filename, NOT_LOCALIZED), "rb");
     if (!fp) {
         return 0;
     }
-    int version = get_scenario_version(fp);
+    *version = get_scenario_version(fp);
     init_scenario_data(version);
     for (int i = 0; i < scenario_data.num_pieces; i++) {
         file_piece *piece = &scenario_data.pieces[i];
@@ -827,7 +827,8 @@ static int load_scenario_to_buffers(const char *filename)
 int game_file_io_read_scenario(const char *filename)
 {
     log_info("Loading scenario", filename, 0);
-    if (!load_scenario_to_buffers(filename)) {
+    int version = 0;
+    if (!load_scenario_to_buffers(filename, &version)) {
         return 0;
     }
     scenario_load_from_state(&scenario_data.state, scenario_data.version);
@@ -879,7 +880,8 @@ static void set_viewport(int *x, int *y, int *width, int *height)
 
 int game_file_io_read_scenario_info(const char *filename, scenario_info *info)
 {
-    if (!load_scenario_to_buffers(filename)) {
+    int version = 0;
+    if (!load_scenario_to_buffers(filename, &version)) {
         return 0;
     }
 
@@ -887,14 +889,14 @@ int game_file_io_read_scenario_info(const char *filename, scenario_info *info)
 
     scenario_description_from_buffer(state->scenario, info->description);
     info->image_id = scenario_image_id_from_buffer(state->scenario);
-    info->climate = scenario_climate_from_buffer(state->scenario);
+    info->climate = scenario_climate_from_buffer(state->scenario, version);
     info->total_invasions = scenario_invasions_from_buffer(state->scenario);
     info->player_rank = scenario_rank_from_buffer(state->scenario);
     info->start_year = scenario_start_year_from_buffer(state->scenario);
-    scenario_open_play_info_from_buffer(state->scenario, &info->is_open_play, &info->open_play_id);
+    scenario_open_play_info_from_buffer(state->scenario, version, &info->is_open_play, &info->open_play_id);
 
     if (!info->is_open_play) {
-        scenario_objectives_from_buffer(state->scenario, &info->win_criteria);
+        scenario_objectives_from_buffer(state->scenario, version, &info->win_criteria);
     }
     int grid_start;
     int grid_border_size;
@@ -1113,6 +1115,7 @@ static int savegame_read_file_info(FILE *fp, saved_game_info *info, int version)
 
     savegame_version_data version_data;
     get_version_data(&version_data, version);
+    int scenario_version = save_version_to_scenario_version(version);
 
     file_piece city_data, game_time, terrain_grid, random_grid, scenario;
     file_piece bitfields_grid, edge_grid, building_grid, buildings;
@@ -1238,7 +1241,7 @@ static int savegame_read_file_info(FILE *fp, saved_game_info *info, int version)
     minimap_data.version = version;
     scenario_map_data_from_buffer(&scenario.buf, &minimap_data.city_width, &minimap_data.city_height,
         &grid_start, &grid_border_size);
-    minimap_data.climate = scenario_climate_from_buffer(&scenario.buf);
+    minimap_data.climate = scenario_climate_from_buffer(&scenario.buf, scenario_version);
     minimap_data.functions.building = savegame_building;
     minimap_data.functions.climate = get_climate;
     minimap_data.functions.map.width = map_width;
