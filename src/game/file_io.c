@@ -800,7 +800,7 @@ static int load_scenario_to_buffers(const char *filename, int *version)
         return 0;
     }
     *version = get_scenario_version(fp);
-    init_scenario_data(version);
+    init_scenario_data(*version);
     for (int i = 0; i < scenario_data.num_pieces; i++) {
         file_piece *piece = &scenario_data.pieces[i];
         int result = 0;
