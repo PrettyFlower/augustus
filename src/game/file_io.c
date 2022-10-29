@@ -311,7 +311,7 @@ static void init_scenario_data(int version)
     if (version <= SCENARIO_LAST_UNVERSIONED) {
         state->scenario = create_scenario_piece(1720, 0);
     } else {
-        state->scenario = create_scenario_piece(1770, 0);
+        state->scenario = create_scenario_piece(1830, 0);
         state->empire = create_scenario_piece(PIECE_SIZE_DYNAMIC, 1);
     }
     state->end_marker = create_scenario_piece(4, 0);
