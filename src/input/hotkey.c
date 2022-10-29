@@ -460,7 +460,7 @@ static int allocate_mapping_memory(int total_definitions, int total_arrows)
 
 void hotkey_install_mapping(hotkey_mapping *mappings, int num_mappings)
 {
-    int total_definitions = 3; // Enter, ESC and F5 are fixed hotkeys
+    int total_definitions = 5; // Enter, ESC and F5 are fixed hotkeys
     int total_arrows = 0;
     for (int i = 0; i < num_mappings; i++) {
         hotkey_action action = mappings[i].action;
@@ -494,7 +494,19 @@ void hotkey_install_mapping(hotkey_mapping *mappings, int num_mappings)
     data.definitions[2].repeatable = 0;
     data.definitions[2].value = 1;
 
-    data.num_definitions = 3;
+    data.definitions[3].action = &data.hotkey_state.delete_pressed;
+    data.definitions[3].key = KEY_TYPE_DELETE;
+    data.definitions[3].modifiers = 0;
+    data.definitions[3].repeatable = 0;
+    data.definitions[3].value = 1;
+
+    data.definitions[4].action = &data.hotkey_state.backspace_pressed;
+    data.definitions[4].key = KEY_TYPE_BACKSPACE;
+    data.definitions[4].modifiers = 0;
+    data.definitions[4].repeatable = 0;
+    data.definitions[4].value = 1;
+
+    data.num_definitions = 5;
 
     for (int i = 0; i < num_mappings; i++) {
         hotkey_action action = mappings[i].action;
