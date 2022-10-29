@@ -10,7 +10,7 @@ int trade_route_limit(int route_id, resource_type resource);
 
 int trade_route_traded(int route_id, resource_type resource);
 
-int trade_route_change_limit(int route_id, resource_type resource, int amount);
+int trade_route_set_limit(int route_id, resource_type resource, int amount);
 
 /**
  * Increases the trade limit of the resource
