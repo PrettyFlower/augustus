@@ -13,6 +13,7 @@
 
 static void button_number(int number, int param2);
 static void button_accept(int param1, int param2);
+static void button_delete(int param1, int param2);
 static void button_cancel(int param1, int param2);
 
 static void input_number(int number);
@@ -30,7 +31,8 @@ static generic_button buttons[] = {
     {81, 111, 25, 25, button_number, button_none, 9, 0},
     {21, 141, 25, 25, button_number, button_none, 0, 0},
     {51, 141, 55, 25, button_accept, button_none, 1, 0},
-    {21, 171, 85, 25, button_cancel, button_none, 1, 0}
+    {21, 171, 25, 25, button_delete, button_none, 1, 0},
+    {51, 171, 55, 25, button_cancel, button_none, 1, 0}
 };
 
 static struct {
@@ -98,14 +100,16 @@ static void draw_foreground(void)
     lang_text_draw_centered_colored(44, 16, data.x + 51, data.y + 147, 55, FONT_NORMAL_PLAIN,
             data.focus_button_id == 11 ? COLOR_FONT_BLUE : COLOR_BLACK);
 
-    graphics_draw_rect(data.x + 21, data.y + 171, 85, 25, data.focus_button_id == 12 ? COLOR_FONT_BLUE : COLOR_BLACK);
-    lang_text_draw_centered_colored(44, 17, data.x + 21, data.y + 177, 85, FONT_NORMAL_PLAIN,
-            data.focus_button_id == 12 ? COLOR_FONT_BLUE : COLOR_BLACK);
+    graphics_draw_rect(data.x + 21, data.y + 171, 25, 25, data.focus_button_id == 12 ? COLOR_FONT_BLUE : COLOR_BLACK);
+    text_draw_centered("X", data.x + 21, data.y + 177, 25, FONT_NORMAL_PLAIN, COLOR_RED);
+    graphics_draw_rect(data.x + 51, data.y + 171, 55, 25, data.focus_button_id == 13 ? COLOR_FONT_BLUE : COLOR_BLACK);
+    lang_text_draw_centered_colored(44, 17, data.x + 51, data.y + 177, 55, FONT_NORMAL_PLAIN,
+            data.focus_button_id == 13 ? COLOR_FONT_BLUE : COLOR_BLACK);
 }
 
 static void handle_input(const mouse *m, const hotkeys *h)
 {
-    if (generic_buttons_handle_mouse(m, data.x, data.y, buttons, 12, &data.focus_button_id)) {
+    if (generic_buttons_handle_mouse(m, data.x, data.y, buttons, 13, &data.focus_button_id)) {
         return;
     }
     if (input_go_back_requested(m, h)) {
@@ -124,6 +128,15 @@ static void button_number(int number, int param2)
 static void button_accept(int param1, int param2)
 {
     input_accept();
+}
+
+static void button_delete(int param1, int param2)
+{
+    if (data.num_digits > 0) {
+        data.value = data.value / 10;
+        data.num_digits--;
+        sound_effect_play(SOUND_EFFECT_BUILD);
+    }
 }
 
 static void button_cancel(int param1, int param2)
