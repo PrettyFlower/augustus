@@ -291,7 +291,7 @@ static void draw_panel_buttons(const empire_city *city)
         string_copy(", ", text + len, 3);
         len += 2;
         string_from_int(text + len, m->y - data.y_draw_offset, 0);
-        text_draw_centered(text, 20, 20, 58, FONT_SMALL_PLAIN, COLOR_RED);
+        text_draw_centered(text, 20, 20, 58, FONT_NORMAL_BLACK, 0);
     }
 }
 
