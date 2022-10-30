@@ -278,8 +278,10 @@ static void draw_panel_buttons(const empire_city *city)
     button_border_draw(data.x_min + 104, data.y_max - 52, 100, 24, data.focus_button_id == 1);
     lang_text_draw_centered(44, 7, data.x_min + 104, data.y_max - 45, 100, FONT_NORMAL_GREEN);
 
-    button_border_draw(data.x_min + 224, data.y_max - 52, 150, 24, data.focus_button_id == 2);
-    lang_text_draw_centered(CUSTOM_TRANSLATION, TR_EDITOR_REFRESH_EMPIRE, data.x_min + 224, data.y_max - 45, 150, FONT_NORMAL_GREEN);
+    if (scenario.empire.id == SCENARIO_CUSTOM_EMPIRE) {
+        button_border_draw(data.x_min + 224, data.y_max - 52, 150, 24, data.focus_button_id == 2);
+        lang_text_draw_centered(CUSTOM_TRANSLATION, TR_EDITOR_REFRESH_EMPIRE, data.x_min + 224, data.y_max - 45, 150, FONT_NORMAL_GREEN);
+    }
 }
 
 static void draw_foreground(void)
