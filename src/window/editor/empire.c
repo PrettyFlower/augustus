@@ -3,6 +3,7 @@
 #include "core/image_group_editor.h"
 #include "empire/city.h"
 #include "empire/empire.h"
+#include "empire/empire_xml.h"
 #include "empire/object.h"
 #include "empire/trade_route.h"
 #include "empire/type.h"
@@ -16,6 +17,7 @@
 #include "graphics/window.h"
 #include "input/input.h"
 #include "input/scroll.h"
+#include "scenario/data.h"
 #include "scenario/editor.h"
 #include "scenario/empire.h"
 #include "window/editor/map.h"
@@ -26,13 +28,15 @@
 
 static void button_change_empire(int is_up, int param2);
 static void button_ok(int param1, int param2);
+static void button_refresh(int param1, int param2);
 
 static arrow_button arrow_buttons_empire[] = {
     {8, 48, 17, 24, button_change_empire, 1, 0},
     {32, 48, 15, 24, button_change_empire, 0, 0}
 };
-static generic_button generic_button_ok[] = {
-    {84, 48, 100, 24, button_ok, button_none, 0, 0}
+static generic_button generic_buttons[] = {
+    {84, 48, 100, 24, button_ok, button_none, 0, 0},
+    {204, 48, 150, 24, button_refresh, button_none, 0, 0},
 };
 
 static struct {
@@ -273,6 +277,9 @@ static void draw_panel_buttons(const empire_city *city)
 
     button_border_draw(data.x_min + 104, data.y_max - 52, 100, 24, data.focus_button_id == 1);
     lang_text_draw_centered(44, 7, data.x_min + 104, data.y_max - 45, 100, FONT_NORMAL_GREEN);
+
+    button_border_draw(data.x_min + 224, data.y_max - 52, 150, 24, data.focus_button_id == 2);
+    lang_text_draw_centered(CUSTOM_TRANSLATION, TR_EDITOR_REFRESH_EMPIRE, data.x_min + 224, data.y_max - 45, 150, FONT_NORMAL_GREEN);
 }
 
 static void draw_foreground(void)
@@ -307,6 +314,14 @@ static void determine_selected_object(const mouse *m)
     window_invalidate();
 }
 
+static void refresh_empire()
+{
+    if (scenario.empire.id != SCENARIO_CUSTOM_EMPIRE) {
+        return;
+    }
+    empire_xml_parse_file(scenario.empire.custom_name);
+}
+
 static void handle_input(const mouse *m, const hotkeys *h)
 {
     pixel_offset position;
@@ -315,6 +330,8 @@ static void handle_input(const mouse *m, const hotkeys *h)
     }
     if (h->toggle_editor_battle_info) {
         data.show_battle_objects = !data.show_battle_objects;
+    } else if (h->f5_pressed) {
+        refresh_empire();
     }
     if (m->is_touch) {
         const touch *t = touch_get_earliest();
@@ -333,7 +350,7 @@ static void handle_input(const mouse *m, const hotkeys *h)
     data.focus_button_id = 0;
     if (!arrow_buttons_handle_mouse(m, data.x_min + 20, data.y_max - 100, arrow_buttons_empire, 2, 0)) {
         if (!generic_buttons_handle_mouse(m, data.x_min + 20, data.y_max - 100,
-            generic_button_ok, 1, &data.focus_button_id)) {
+            generic_buttons, 2, &data.focus_button_id)) {
             determine_selected_object(m);
             int selected_object = empire_selected_object();
             if (selected_object) {
@@ -369,6 +386,11 @@ static void button_change_empire(int is_down, int param2)
 static void button_ok(int param1, int param2)
 {
     window_editor_map_show();
+}
+
+static void button_refresh(int param1, int param2)
+{
+    refresh_empire();
 }
 
 void window_editor_empire_show(void)
