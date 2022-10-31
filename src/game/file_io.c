@@ -310,8 +310,12 @@ static void init_scenario_data(int version)
     state->camera = create_scenario_piece(8, 0);
     if (version <= SCENARIO_LAST_UNVERSIONED) {
         state->scenario = create_scenario_piece(1720, 0);
-    } else {
+    } else if(version <= SCENARIO_LAST_NO_WAGE_LIMITS) {
         state->scenario = create_scenario_piece(1830, 0);
+    } else {
+        state->scenario = create_scenario_piece(1838, 0);
+    }
+    if (version > SCENARIO_LAST_UNVERSIONED) {
         state->empire = create_scenario_piece(PIECE_SIZE_DYNAMIC, 1);
     }
     state->end_marker = create_scenario_piece(4, 0);

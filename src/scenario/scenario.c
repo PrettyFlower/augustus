@@ -126,7 +126,9 @@ void scenario_save_state(buffer *buf)
     buffer_write_i32(buf, scenario.random_events.sea_trade_problem);
     buffer_write_i32(buf, scenario.random_events.land_trade_problem);
     buffer_write_i32(buf, scenario.random_events.raise_wages);
+    buffer_write_i32(buf, scenario.random_events.max_wages);
     buffer_write_i32(buf, scenario.random_events.lower_wages);
+    buffer_write_i32(buf, scenario.random_events.min_wages);
     buffer_write_i32(buf, scenario.random_events.contaminated_water);
     buffer_write_i32(buf, scenario.random_events.iron_mine_collapse);
     buffer_write_i32(buf, scenario.random_events.clay_pit_flooded);
@@ -348,7 +350,19 @@ void scenario_load_state(buffer *buf, int version)
     scenario.random_events.sea_trade_problem = buffer_read_i32(buf);
     scenario.random_events.land_trade_problem = buffer_read_i32(buf);
     scenario.random_events.raise_wages = buffer_read_i32(buf);
+    if (version > SCENARIO_LAST_NO_WAGE_LIMITS) {
+        scenario.random_events.max_wages = buffer_read_i32(buf);
+    }
+    if (!scenario.random_events.max_wages) {
+        scenario.random_events.max_wages = 45;
+    }
     scenario.random_events.lower_wages = buffer_read_i32(buf);
+    if (version > SCENARIO_LAST_NO_WAGE_LIMITS) {
+        scenario.random_events.min_wages = buffer_read_i32(buf);
+    }
+    if (!scenario.random_events.min_wages) {
+        scenario.random_events.min_wages = 5;
+    }
     scenario.random_events.contaminated_water = buffer_read_i32(buf);
     scenario.random_events.iron_mine_collapse = buffer_read_i32(buf);
     scenario.random_events.clay_pit_flooded = buffer_read_i32(buf);
@@ -464,8 +478,10 @@ int scenario_climate_from_buffer(buffer *buf, int version)
 {
     if (version <= SCENARIO_LAST_UNVERSIONED) {
         buffer_set(buf, 1704);
+    } else if (version <= SCENARIO_LAST_NO_WAGE_LIMITS) {
+        buffer_set(buf, 1764);
     } else {
-        buffer_set(buf, 1704 + MAX_DEMAND_CHANGES * 3);
+        buffer_set(buf, 1772);
     }
     return buffer_read_u8(buf);
 }
@@ -501,8 +517,10 @@ void scenario_open_play_info_from_buffer(buffer *buf, int version, int *is_open_
     *is_open_play = buffer_read_i16(buf);
     if (version <= SCENARIO_LAST_UNVERSIONED) {
         buffer_set(buf, 1718);
+    } else if (version <= SCENARIO_LAST_NO_WAGE_LIMITS) {
+        buffer_set(buf, 1778);
     } else {
-        buffer_set(buf, 1718 + MAX_DEMAND_CHANGES * 3);
+        buffer_set(buf, 1786);
     }
     *open_play_id = buffer_read_u8(buf);
 }
@@ -517,8 +535,10 @@ void scenario_objectives_from_buffer(buffer *buf, int version, scenario_win_crit
 {
     if (version <= SCENARIO_LAST_UNVERSIONED) {
         buffer_set(buf, 1572);
+    } else if (version <= SCENARIO_LAST_NO_WAGE_LIMITS) {
+        buffer_set(buf, 1632);
     } else {
-        buffer_set(buf, 1572 + MAX_DEMAND_CHANGES * 3);
+        buffer_set(buf, 1640);
     }
     win_criteria->culture.goal = buffer_read_i32(buf);
     win_criteria->prosperity.goal = buffer_read_i32(buf);

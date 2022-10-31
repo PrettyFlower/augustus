@@ -854,7 +854,9 @@ static translation_string all_strings[] = {
     {TR_EDITOR_UNABLE_TO_LOAD_EMPIRE_TITLE, "Unable to load custom empire"},
     {TR_EDITOR_UNABLE_TO_LOAD_EMPIRE_MESSAGE, "Please check augustus-log.txt in your Augustus directory for details."},
     {TR_EDITOR_SHORT_ROUTE_TEXT, "rt"},
-    {TR_EDITOR_REFRESH_EMPIRE, "Refresh (F5)"}
+    {TR_EDITOR_REFRESH_EMPIRE, "Refresh (F5)"},
+    {TR_EDITOR_MAX_WAGES, "Up to"},
+    {TR_EDITOR_MIN_WAGES, "Down to"},
 };
 
 void translation_english(const translation_string **strings, int *num_strings)

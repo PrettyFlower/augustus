@@ -94,6 +94,9 @@ void scenario_editor_create(int map_size)
         scenario.invasions[i].from = 8;
     }
 
+    scenario.random_events.max_wages = 45;
+    scenario.random_events.min_wages = 5;
+
     scenario.is_saved = 1;
 }
 

@@ -201,7 +201,9 @@ extern struct scenario_t {
         int sea_trade_problem;
         int land_trade_problem;
         int raise_wages;
+        int max_wages;
         int lower_wages;
+        int min_wages;
         int contaminated_water;
         int iron_mine_collapse;
         int clay_pit_flooded;
