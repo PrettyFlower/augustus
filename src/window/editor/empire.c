@@ -283,16 +283,22 @@ static void draw_panel_buttons(const empire_city *city)
     if (scenario.empire.id == SCENARIO_CUSTOM_EMPIRE) {
         button_border_draw(data.x_min + 224, data.y_max - 52, 150, 24, data.focus_button_id == 2);
         lang_text_draw_centered(CUSTOM_TRANSLATION, TR_EDITOR_REFRESH_EMPIRE, data.x_min + 224, data.y_max - 45, 150, FONT_NORMAL_GREEN);
-
-        mouse *m = mouse_get();
-        uint8_t text[20];
-        string_from_int(text, m->x - data.x_draw_offset, 0);
-        int len = string_length(text);
-        string_copy(", ", text + len, 3);
-        len += 2;
-        string_from_int(text + len, m->y - data.y_draw_offset, 0);
-        text_draw_centered(text, 20, 20, 58, FONT_NORMAL_BLACK, 0);
     }
+}
+
+static void draw_coordinates()
+{
+    if (scenario.empire.id != SCENARIO_CUSTOM_EMPIRE) {
+        return;
+    }
+    mouse *m = mouse_get();
+    uint8_t text[20];
+    string_from_int(text, m->x - data.x_draw_offset, 0);
+    int len = string_length(text);
+    string_copy(", ", text + len, 3);
+    len += 2;
+    string_from_int(text + len, m->y - data.y_draw_offset, 0);
+    text_draw_centered(text, data.x_min + 20, data.y_min + 20, 58, FONT_NORMAL_BLACK, 0);
 }
 
 static void draw_foreground(void)
@@ -309,6 +315,7 @@ static void draw_foreground(void)
         }
     }
     draw_panel_buttons(city);
+    draw_coordinates();
 }
 
 static int is_outside_map(int x, int y)
