@@ -506,7 +506,7 @@ static void scenario_save_to_state(scenario_state *file)
 }
 
 static int save_version_to_scenario_version(int save_version) {
-    if (save_version >= SAVE_GAME_LAST_UNVERSIONED_SCENARIOS) {
+    if (save_version > SAVE_GAME_LAST_UNVERSIONED_SCENARIOS) {
         return SCENARIO_CURRENT_VERSION;
     }
     return SCENARIO_LAST_UNVERSIONED;
