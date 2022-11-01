@@ -100,20 +100,27 @@ static void xml_parse_city(int num_attrs, const char **attributes)
             city_obj->obj.x = string_to_int(attr_val_s);
         } else if (strcmp(attr_name, "y") == 0) {
             city_obj->obj.y = string_to_int(attr_val_s);
-        } else if (strcmp(attr_name, "ours") == 0 && strcmp(attr_val, "true") == 0) {
-            city_obj->city_type = EMPIRE_CITY_OURS;
-            city_obj->obj.image_id = image_group(GROUP_EMPIRE_CITY);
+        } else if (strcmp(attr_name, "type") == 0) {
+            if (strcmp(attr_val, "ours") == 0) {
+                city_obj->city_type = EMPIRE_CITY_OURS;
+                city_obj->obj.image_id = image_group(GROUP_EMPIRE_CITY);
+            } else if (strcmp(attr_val, "distant_roman") == 0) {
+                city_obj->city_type = EMPIRE_CITY_DISTANT_ROMAN;
+                city_obj->obj.image_id = image_group(GROUP_EMPIRE_CITY_DISTANT_ROMAN);
+            } else if (strcmp(attr_val, "distant") == 0) {
+                city_obj->city_type = EMPIRE_CITY_DISTANT_FOREIGN;
+                city_obj->obj.image_id = image_group(GROUP_EMPIRE_FOREIGN_CITY);
+            } else if (strcmp(attr_val, "trade") == 0) {
+                city_obj->city_type = EMPIRE_CITY_TRADE;
+                city_obj->obj.image_id = image_group(GROUP_EMPIRE_CITY_TRADE);
+            } else {
+                log_error("Unable to determine type of city", city_obj->city_custom_name, 0);
+            }
         } else if (strcmp(attr_name, "trade_route_cost") == 0) {
             city_obj->trade_route_cost = string_to_int(attr_val_s);
         } else if (strcmp(attr_name, "trade_by_sea") == 0) {
             route_obj->obj.type = EMPIRE_OBJECT_SEA_TRADE_ROUTE;
             route_obj->obj.image_id--;
-        } else if (strcmp(attr_name, "distant_roman") == 0 && strcmp(attr_val, "true") == 0) {
-            city_obj->city_type = EMPIRE_CITY_DISTANT_ROMAN;
-            city_obj->obj.image_id = image_group(GROUP_EMPIRE_CITY_DISTANT_ROMAN);
-        } else if (strcmp(attr_name, "distant") == 0 && strcmp(attr_val, "true") == 0) {
-            city_obj->city_type = EMPIRE_CITY_DISTANT_FOREIGN;
-            city_obj->obj.image_id = image_group(GROUP_EMPIRE_FOREIGN_CITY);
         }
     }
 
