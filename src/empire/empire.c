@@ -93,7 +93,7 @@ void empire_center_on_our_city(int viewport_width, int viewport_height)
 void empire_load_editor(int empire_id, int viewport_width, int viewport_height)
 {
     empire_load(1, empire_id);
-    empire_object_init_cities();
+    empire_object_init_cities(empire_id);
     empire_center_on_our_city(viewport_width, viewport_height);
 }
 
@@ -104,7 +104,7 @@ void empire_init_scenario(void)
     data.viewport_width = EMPIRE_WIDTH;
     data.viewport_height = EMPIRE_HEIGHT;
 
-    empire_object_init_cities();
+    empire_object_init_cities(scenario_empire_id());
 }
 
 void empire_set_viewport(int width, int height)

@@ -351,7 +351,7 @@ static int parse_xml(char *buffer, int buffer_length)
         trade_route->y = (our_city->y + trade_city->obj.y) / 2 + 16;
     }
 
-    empire_object_init_cities();
+    empire_object_init_cities(SCENARIO_CUSTOM_EMPIRE);
 
     return data.success;
 }

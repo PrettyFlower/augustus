@@ -197,7 +197,7 @@ void empire_object_save(buffer *buf)
     }
 }
 
-void empire_object_init_cities(void)
+void empire_object_init_cities(int empire_id)
 {
     empire_city_clear_all();
     int route_index = 1;
@@ -213,7 +213,7 @@ void empire_object_init_cities(void)
         if (obj->obj.trade_route_id < 0) {
             obj->obj.trade_route_id = 0;
         }
-        if (obj->obj.trade_route_id >= 20) {
+        if (obj->obj.trade_route_id >= 20 && empire_id != SCENARIO_CUSTOM_EMPIRE) {
             obj->obj.trade_route_id = 19;
         }
         city->route_id = obj->obj.trade_route_id;
