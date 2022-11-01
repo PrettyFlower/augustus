@@ -317,8 +317,7 @@ void scenario_load_state(buffer *buf, int version)
             int amount = is_rise ? DEMAND_CHANGE_LEGACY_IS_RISE : DEMAND_CHANGE_LEGACY_IS_FALL;
             scenario.demand_changes[i].amount = amount;
         }
-    }
-    else {
+    } else {
         for (int i = 0; i < MAX_DEMAND_CHANGES; i++) {
             scenario.demand_changes[i].amount = buffer_read_i32(buf);
         }

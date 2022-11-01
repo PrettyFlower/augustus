@@ -460,7 +460,7 @@ static int allocate_mapping_memory(int total_definitions, int total_arrows)
 
 void hotkey_install_mapping(hotkey_mapping *mappings, int num_mappings)
 {
-    int total_definitions = 5; // Enter, ESC and F5 are fixed hotkeys
+    int total_definitions = 5; // Fixed keys: Enter, ESC, F5, Delete, Backspace
     int total_arrows = 0;
     for (int i = 0; i < num_mappings; i++) {
         hotkey_action action = mappings[i].action;
@@ -475,7 +475,7 @@ void hotkey_install_mapping(hotkey_mapping *mappings, int num_mappings)
         return;
     }
 
-    // Fixed keys: Escape and Enter
+    // Fixed keys: Enter, ESC, F5, Delete, Backspace -- yep they're still fixed even down here. crazy, i know
     data.definitions[0].action = &data.hotkey_state.enter_pressed;
     data.definitions[0].key = KEY_TYPE_ENTER;
     data.definitions[0].modifiers = 0;

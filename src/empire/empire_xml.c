@@ -104,7 +104,7 @@ static void xml_parse_city(int num_attrs, const char **attributes)
             if (strcmp(attr_val, "ours") == 0) {
                 city_obj->city_type = EMPIRE_CITY_OURS;
                 city_obj->obj.image_id = image_group(GROUP_EMPIRE_CITY);
-            } else if (strcmp(attr_val, "distant_roman") == 0) {
+            } else if (strcmp(attr_val, "roman") == 0) {
                 city_obj->city_type = EMPIRE_CITY_DISTANT_ROMAN;
                 city_obj->obj.image_id = image_group(GROUP_EMPIRE_CITY_DISTANT_ROMAN);
             } else if (strcmp(attr_val, "distant") == 0) {
@@ -118,9 +118,16 @@ static void xml_parse_city(int num_attrs, const char **attributes)
             }
         } else if (strcmp(attr_name, "trade_route_cost") == 0) {
             city_obj->trade_route_cost = string_to_int(attr_val_s);
-        } else if (strcmp(attr_name, "trade_by_sea") == 0) {
-            route_obj->obj.type = EMPIRE_OBJECT_SEA_TRADE_ROUTE;
-            route_obj->obj.image_id--;
+        } else if (strcmp(attr_name, "trade_route_type") == 0) {
+            if (strcmp(attr_val, "land") == 0) {
+                route_obj->obj.type = EMPIRE_OBJECT_LAND_TRADE_ROUTE;
+                route_obj->obj.image_id = image_group(GROUP_EMPIRE_TRADE_ROUTE_TYPE) + 1;
+            } else if (strcmp(attr_val, "sea") == 0) {
+                route_obj->obj.type = EMPIRE_OBJECT_SEA_TRADE_ROUTE;
+                route_obj->obj.image_id--;
+            } else {
+                log_error("Unable to determine trade route type", city_obj->city_custom_name, 0);
+            }
         }
     }
 
