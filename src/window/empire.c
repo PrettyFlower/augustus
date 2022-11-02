@@ -334,7 +334,8 @@ void draw_trade_dots(const empire_object *trade_route, int x_draw_offset, int y_
     double dist = sqrt(x_diff * x_diff + y_diff * y_diff);
     double x_factor = x_diff / dist;
     double y_factor = y_diff / dist;
-    int num_dots = ceil(dist / 15);
+    static const int dot_spacing = 15;
+    int num_dots = ceil(dist / dot_spacing);
     int image_id = trade_route->type == EMPIRE_OBJECT_LAND_TRADE_ROUTE ? assets_get_image_id("UI", "LandRouteDot") : assets_get_image_id("UI", "SeaRouteDot");
     for (int j = 0; j < num_dots; j++) {
         int x = x_factor * j * 15 + start_x;
