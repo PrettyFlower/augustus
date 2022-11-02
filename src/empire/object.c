@@ -60,16 +60,22 @@ void empire_object_load(buffer *buf, int version)
         }
 
         obj->animation_index = buffer_read_u8(buf);
-        buffer_skip(buf, 1);
+        if (version <= SCENARIO_LAST_EMPIRE_OBJECT_BUFFERS) {
+            buffer_skip(buf, 1);
+        }
         obj->x = buffer_read_i16(buf);
         obj->y = buffer_read_i16(buf);
         obj->width = buffer_read_i16(buf);
         obj->height = buffer_read_i16(buf);
         obj->image_id = buffer_read_i16(buf);
         obj->expanded.image_id = buffer_read_i16(buf);
-        buffer_skip(buf, 1);
+        if (version <= SCENARIO_LAST_EMPIRE_OBJECT_BUFFERS) {
+            buffer_skip(buf, 1);
+        }
         obj->distant_battle_travel_months = buffer_read_u8(buf);
-        buffer_skip(buf, 2);
+        if (version <= SCENARIO_LAST_EMPIRE_OBJECT_BUFFERS) {
+            buffer_skip(buf, 2);
+        }
         obj->expanded.x = buffer_read_i16(buf);
         obj->expanded.y = buffer_read_i16(buf);
         full->city_type = buffer_read_u8(buf);
@@ -125,7 +131,9 @@ void empire_object_load(buffer *buf, int version)
                 }
             }
         }
-        buffer_skip(buf, 6);
+        if (version <= SCENARIO_LAST_EMPIRE_OBJECT_BUFFERS) {
+            buffer_skip(buf, 6);
+        }
 
         if (version > SCENARIO_LAST_UNVERSIONED) {
             buffer_read_raw(buf, full->city_custom_name, sizeof(full->city_custom_name));
@@ -144,7 +152,7 @@ void empire_object_save(buffer *buf)
         buffer_write_i32(buf, 0);
         return;
     }
-    int size_per_obj = 118;
+    int size_per_obj = 108;
     int total_size = 0;
     for (int i = 0; i < MAX_EMPIRE_OBJECTS; i++) {
         full_empire_object *full = &objects[i];
@@ -167,16 +175,13 @@ void empire_object_save(buffer *buf)
         }
 
         buffer_write_u8(buf, obj->animation_index);
-        buffer_skip(buf, 1);
         buffer_write_i16(buf, obj->x);
         buffer_write_i16(buf, obj->y);
         buffer_write_i16(buf, obj->width);
         buffer_write_i16(buf, obj->height);
         buffer_write_i16(buf, obj->image_id);
         buffer_write_i16(buf, obj->expanded.image_id);
-        buffer_skip(buf, 1);
         buffer_write_u8(buf, obj->distant_battle_travel_months);
-        buffer_skip(buf, 2);
         buffer_write_i16(buf, obj->expanded.x);
         buffer_write_i16(buf, obj->expanded.y);
         buffer_write_u8(buf, full->city_type);
@@ -192,7 +197,6 @@ void empire_object_save(buffer *buf)
         }
         buffer_write_u8(buf, obj->invasion_path_id);
         buffer_write_u8(buf, obj->invasion_years);
-        buffer_skip(buf, 6);
         buffer_write_raw(buf, full->city_custom_name, sizeof(full->city_custom_name));
     }
 }
