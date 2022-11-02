@@ -93,12 +93,19 @@ void empire_object_load(buffer *buf, int version)
             for (int r = 0; r < 8; r++) {
                 old_buys_resource[r] = buffer_read_u8(buf);
             }
-        } else {
+        } else if (version <= SCENARIO_LAST_EMPIRE_RESOURCES_U8) {
             for (int r = RESOURCE_MIN; r < RESOURCE_MAX; r++) {
                 full->city_sells_resource[r] = buffer_read_u8(buf);
             }
             for (int r = RESOURCE_MIN; r < RESOURCE_MAX; r++) {
                 full->city_buys_resource[r] = buffer_read_u8(buf);
+            }
+        } else {
+            for (int r = RESOURCE_MIN; r < RESOURCE_MAX; r++) {
+                full->city_sells_resource[r] = buffer_read_i32(buf);
+            }
+            for (int r = RESOURCE_MIN; r < RESOURCE_MAX; r++) {
+                full->city_buys_resource[r] = buffer_read_i32(buf);
             }
         }
         obj->invasion_path_id = buffer_read_u8(buf);
@@ -152,7 +159,7 @@ void empire_object_save(buffer *buf)
         buffer_write_i32(buf, 0);
         return;
     }
-    int size_per_obj = 108;
+    int size_per_obj = 198;
     int total_size = 0;
     for (int i = 0; i < MAX_EMPIRE_OBJECTS; i++) {
         full_empire_object *full = &objects[i];
@@ -190,10 +197,10 @@ void empire_object_save(buffer *buf)
         buffer_write_u8(buf, full->trade_route_open);
         buffer_write_i16(buf, full->trade_route_cost);
         for (int r = RESOURCE_MIN; r < RESOURCE_MAX; r++) {
-            buffer_write_u8(buf, full->city_sells_resource[r]);
+            buffer_write_i32(buf, full->city_sells_resource[r]);
         }
         for (int r = RESOURCE_MIN; r < RESOURCE_MAX; r++) {
-            buffer_write_u8(buf, full->city_buys_resource[r]);
+            buffer_write_i32(buf, full->city_buys_resource[r]);
         }
         buffer_write_u8(buf, obj->invasion_path_id);
         buffer_write_u8(buf, obj->invasion_years);
