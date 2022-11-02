@@ -363,12 +363,12 @@ static void get_version_data(savegame_version_data *version_data, int version)
     version_data->has_monument_deliveries = version > SAVE_GAME_LAST_NO_DELIVERIES_VERSION;
     version_data->has_barracks_tower_sentry_request = version <= SAVE_GAME_LAST_BARRACKS_TOWER_SENTRY_REQUEST;
 
-    if (version > SAVE_GAME_LAST_UNVERSIONED_SCENARIOS) {
-        version_data->piece_sizes.scenario = 1770;
-        version_data->has_custom_empires = 1;
-    } else {
+    if (version <= SAVE_GAME_LAST_UNVERSIONED_SCENARIOS) {
         version_data->piece_sizes.scenario = 1720;
         version_data->has_custom_empires = 0;
+    } else {
+        version_data->piece_sizes.scenario = 1838;
+        version_data->has_custom_empires = 1;
     }
 }
 
@@ -506,10 +506,10 @@ static void scenario_save_to_state(scenario_state *file)
 }
 
 static int save_version_to_scenario_version(int save_version) {
-    if (save_version > SAVE_GAME_LAST_UNVERSIONED_SCENARIOS) {
-        return SCENARIO_CURRENT_VERSION;
+    if (save_version <= SAVE_GAME_LAST_UNVERSIONED_SCENARIOS) {
+        return SCENARIO_LAST_UNVERSIONED;
     }
-    return SCENARIO_LAST_UNVERSIONED;
+    return SCENARIO_CURRENT_VERSION;
 }
 
 static void savegame_load_from_state(savegame_state *state, int version)
