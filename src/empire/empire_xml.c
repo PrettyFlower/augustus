@@ -20,15 +20,17 @@
 typedef enum {
     LIST_NONE = -1,
     LIST_BUYS = 1,
-    LIST_SELLS = 2
-} city_resource_list;
+    LIST_SELLS = 2,
+    LIST_TRADE_WAYPOINTS = 3
+} city_list;
 
 static struct {
     int success;
     int version;
     int next_empire_obj_id;
     int current_city_id;
-    city_resource_list current_city_resource_list;
+    int current_trade_route_id;
+    city_list current_city_list;
     int current_invasion_path_id;
     int invasion_path_ids[10];
     int invasion_path_idx;
@@ -85,6 +87,7 @@ static void xml_parse_city(int num_attrs, const char **attributes)
 
     full_empire_object *route_obj = empire_object_get_full(city_obj->obj.trade_route_id);
     route_obj->obj.id = city_obj->obj.trade_route_id;
+    data.current_trade_route_id = route_obj->obj.id;
     route_obj->in_use = 1;
     route_obj->obj.type = EMPIRE_OBJECT_LAND_TRADE_ROUTE;
     route_obj->obj.trade_route_id = city_obj->obj.trade_route_id;
@@ -135,6 +138,7 @@ static void xml_parse_city(int num_attrs, const char **attributes)
         memset(route_obj, 0, sizeof(full_empire_object));
         city_obj->obj.trade_route_id = 0;
         data.next_empire_obj_id--;
+        data.current_trade_route_id = -1;
     }
 }
 
@@ -181,7 +185,7 @@ static void xml_parse_resource(int num_attrs, const char **attributes)
         data.success = 0;
         log_error("No active city when parsing resource", 0, 0);
         return;
-    } else if (data.current_city_resource_list == 0) {
+    } else if (data.current_city_list != LIST_BUYS && data.current_city_list != LIST_SELLS) {
         data.success = 0;
         log_error("Resource not in buy or sell tag", 0, 0);
         return;
@@ -211,10 +215,44 @@ static void xml_parse_resource(int num_attrs, const char **attributes)
         return;
     }
 
-    if (data.current_city_resource_list == LIST_BUYS) {
+    if (data.current_city_list == LIST_BUYS) {
         city_obj->city_buys_resource[resource] = amount;
-    } else if (data.current_city_resource_list == LIST_SELLS) {
+    } else if (data.current_city_list == LIST_SELLS) {
         city_obj->city_sells_resource[resource] = amount;
+    }
+}
+
+static void xml_parse_trade_point(int num_attrs, const char **attributes)
+{
+    if (data.current_city_id == -1) {
+        data.success = 0;
+        log_error("No active city when parsing trade point", 0, 0);
+        return;
+    } else if (data.current_city_list != LIST_TRADE_WAYPOINTS) {
+        data.success = 0;
+        log_error("Trade point not trade_points tag", 0, 0);
+        return;
+    } else if (data.current_trade_route_id == -1) {
+        data.success = 0;
+        log_error("Attempting to parse trade point in a city that can't trade", 0, 0);
+        return;
+    }
+
+    full_empire_object *obj = empire_object_get_full(data.next_empire_obj_id);
+    obj->obj.id = data.next_empire_obj_id;
+    data.next_empire_obj_id++;
+    obj->in_use = 1;
+    obj->obj.type = EMPIRE_OBJECT_TRADE_WAYPOINT;
+    obj->obj.trade_route_id = data.current_trade_route_id;
+    for (int i = 0; i < num_attrs; i += 2) {
+        const char *attr_name = attributes[i];
+        const char *attr_val = attributes[i + 1];
+        const uint8_t *attr_val_s = string_from_ascii(attr_val);
+        if (strcmp(attr_name, "x") == 0) {
+            obj->obj.x = string_to_int(attr_val_s);
+        } else if (strcmp(attr_name, "y") == 0) {
+            obj->obj.y = string_to_int(attr_val_s);
+        }
     }
 }
 
@@ -281,11 +319,15 @@ static void XMLCALL xml_start_element(void *unused, const char *name, const char
     if (strcmp(name, "city") == 0) {
         xml_parse_city(num_attrs, attributes);
     } else if (strcmp(name, "sells") == 0) {
-        data.current_city_resource_list = LIST_SELLS;
+        data.current_city_list = LIST_SELLS;
     } else if (strcmp(name, "buys") == 0) {
-        data.current_city_resource_list = LIST_BUYS;
+        data.current_city_list = LIST_BUYS;
+    } else if (strcmp(name, "trade_points") == 0) {
+        data.current_city_list = LIST_TRADE_WAYPOINTS;
     } else if (strcmp(name, "resource") == 0) {
         xml_parse_resource(num_attrs, attributes);
+    } else if (strcmp(name, "point") == 0) {
+        xml_parse_trade_point(num_attrs, attributes);
     } else if (strcmp(name, "path") == 0) {
         xml_parse_invasion_path();
     } else if (strcmp(name, "battle") == 0) {
@@ -301,9 +343,10 @@ static void XMLCALL xml_end_element(void *unused, const char *name)
 
     if (strcmp(name, "city") == 0) {
         data.current_city_id = -1;
-        data.current_city_resource_list = LIST_NONE;
-    } else if (strcmp(name, "sells") == 0 || strcmp(name, "buys") == 0) {
-        data.current_city_resource_list = LIST_NONE;
+        data.current_trade_route_id = -1;
+        data.current_city_list = LIST_NONE;
+    } else if (strcmp(name, "sells") == 0 || strcmp(name, "buys") == 0 || strcmp(name, "trade_points") == 0) {
+        data.current_city_list = LIST_NONE;
     } else if (strcmp(name, "path") == 0) {
         for (int i = 0; i < data.invasion_path_idx; i++) {
             int idx = data.invasion_path_idx - i - 1;
@@ -320,10 +363,59 @@ static void reset_data(void)
     data.success = 1;
     data.next_empire_obj_id = 0;
     data.current_city_id = -1;
-    data.current_city_resource_list = LIST_NONE;
+    data.current_trade_route_id = -1;
+    data.current_city_list = LIST_NONE;
     data.current_invasion_path_id = 0;
     memset(data.invasion_path_ids, 0, sizeof(data.invasion_path_ids));
     data.invasion_path_idx = 0;
+}
+
+static void set_trade_coords(const empire_object *our_city)
+{
+    for (int i = 0; i < MAX_EMPIRE_OBJECTS; i++) {
+        full_empire_object *trade_city = empire_object_get_full(i);
+        if (
+            !trade_city->in_use ||
+            trade_city->obj.type != EMPIRE_OBJECT_CITY ||
+            trade_city->city_type == EMPIRE_CITY_OURS ||
+            !trade_city->obj.trade_route_id
+            ) {
+            continue;
+        }
+        empire_object *trade_route = empire_object_get(trade_city->obj.trade_route_id);
+        if (!trade_route) {
+            continue;
+        }
+
+        int num_waypoints = 0;
+        for (int j = 0; j < MAX_EMPIRE_OBJECTS; j++) {
+            empire_object *obj = empire_object_get(j);
+            if (obj->type != EMPIRE_OBJECT_TRADE_WAYPOINT || obj->trade_route_id != trade_route->trade_route_id) {
+                continue;
+            }
+            num_waypoints++;
+        }
+
+        int last_x = our_city->x + 25;
+        int last_y = our_city->y + 25;
+        int next_x = trade_city->obj.x + 25;
+        int next_y = trade_city->obj.y + 25;
+        int crossed_waypoints = 0;
+        for (int j = 0; j < MAX_EMPIRE_OBJECTS && crossed_waypoints < num_waypoints / 2 + 1; j++) {
+            empire_object *obj = empire_object_get(j);
+            if (obj->type != EMPIRE_OBJECT_TRADE_WAYPOINT || obj->trade_route_id != trade_route->trade_route_id) {
+                continue;
+            }
+            last_x = next_x;
+            last_y = next_y;
+            next_x = obj->x;
+            next_y = obj->y;
+            crossed_waypoints++;
+        }
+
+        trade_route->x = (next_x + last_x) / 2 - 16;
+        trade_route->y = (next_y + last_y) / 2 - 10;
+    }
 }
 
 static int parse_xml(char *buffer, int buffer_length)
@@ -347,24 +439,7 @@ static int parse_xml(char *buffer, int buffer_length)
         return 0;
     }
 
-    for (int i = 0; i < MAX_EMPIRE_OBJECTS; i++) {
-        full_empire_object *trade_city = empire_object_get_full(i);
-        if (
-            !trade_city->in_use ||
-            trade_city->obj.type != EMPIRE_OBJECT_CITY ||
-            trade_city->city_type == EMPIRE_CITY_OURS ||
-            !trade_city->obj.trade_route_id
-            ) {
-            continue;
-        }
-        empire_object *trade_route = empire_object_get(trade_city->obj.trade_route_id);
-        if (!trade_route) {
-            continue;
-        }
-        trade_route->x = (our_city->x + trade_city->obj.x) / 2;
-        trade_route->y = (our_city->y + trade_city->obj.y) / 2 + 16;
-    }
-
+    set_trade_coords(our_city);
     empire_object_init_cities(SCENARIO_CUSTOM_EMPIRE);
 
     return data.success;

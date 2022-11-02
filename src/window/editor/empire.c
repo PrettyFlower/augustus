@@ -165,7 +165,7 @@ static void draw_empire_object(const empire_object *obj)
             obj->type == EMPIRE_OBJECT_ROMAN_ARMY ? COLOR_WHITE : COLOR_FONT_RED);
     }
     if (scenario_empire_id() == SCENARIO_CUSTOM_EMPIRE && (obj->type == EMPIRE_OBJECT_LAND_TRADE_ROUTE || obj->type == EMPIRE_OBJECT_SEA_TRADE_ROUTE)) {
-        window_empire_draw_trade_dots(obj, data.x_draw_offset, data.y_draw_offset);
+        window_empire_draw_trade_waypoints(obj, data.x_draw_offset, data.y_draw_offset);
     }
     image_draw(image_id, data.x_draw_offset + x, data.y_draw_offset + y, COLOR_MASK_NONE, SCALE_NONE);
     const image *img = image_get(image_id);

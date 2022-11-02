@@ -327,23 +327,38 @@ static void draw_background(void)
     }
 }
 
-void window_empire_draw_trade_dots(const empire_object *trade_route, int x_draw_offset, int y_draw_offset)
+void draw_trade_dots(const empire_object *trade_route, int x_draw_offset, int y_draw_offset, int start_x, int start_y, int end_x, int end_y)
 {
-    const empire_object *our_city = empire_object_get_our_city();
-    const empire_object *trade_city = empire_object_get_trade_city(trade_route->trade_route_id);
-
-    int x_diff = trade_city->x - our_city->x;
-    int y_diff = trade_city->y - our_city->y;
+    int x_diff = end_x - start_x;
+    int y_diff = end_y - start_y;
     double dist = sqrt(x_diff * x_diff + y_diff * y_diff);
     double x_factor = x_diff / dist;
     double y_factor = y_diff / dist;
-    int num_dots = dist / 15;
+    int num_dots = ceil(dist / 15);
     int image_id = trade_route->type == EMPIRE_OBJECT_LAND_TRADE_ROUTE ? assets_get_image_id("UI", "LandRouteDot") : assets_get_image_id("UI", "SeaRouteDot");
     for (int j = 0; j < num_dots; j++) {
-        int x = x_factor * j * 15 + our_city->x + 32;
-        int y = y_factor * j * 15 + our_city->y + 32;
+        int x = x_factor * j * 15 + start_x;
+        int y = y_factor * j * 15 + start_y;
         image_draw(image_id, x_draw_offset + x, y_draw_offset + y, COLOR_MASK_NONE, SCALE_NONE);
     }
+}
+
+void window_empire_draw_trade_waypoints(const empire_object *trade_route, int x_draw_offset, int y_draw_offset)
+{
+    const empire_object *our_city = empire_object_get_our_city();
+    const empire_object *trade_city = empire_object_get_trade_city(trade_route->trade_route_id);
+    int last_x = our_city->x + 25;
+    int last_y = our_city->y + 25;
+    for (int i = 0; i < MAX_EMPIRE_OBJECTS; i++) {
+        empire_object *obj = empire_object_get(i);
+        if (obj->type != EMPIRE_OBJECT_TRADE_WAYPOINT || obj->trade_route_id != trade_route->trade_route_id) {
+            continue;
+        }
+        draw_trade_dots(trade_route, x_draw_offset, y_draw_offset, last_x, last_y, obj->x, obj->y);
+        last_x = obj->x;
+        last_y = obj->y;
+    }
+    draw_trade_dots(trade_route, x_draw_offset, y_draw_offset, last_x, last_y, trade_city->x + 25, trade_city->y + 25);
 }
 
 static void draw_empire_object(const empire_object *obj)
@@ -353,7 +368,7 @@ static void draw_empire_object(const empire_object *obj)
             return;
         }
         if (scenario_empire_id() == SCENARIO_CUSTOM_EMPIRE) {
-            window_empire_draw_trade_dots(obj, data.x_draw_offset, data.y_draw_offset);
+            window_empire_draw_trade_waypoints(obj, data.x_draw_offset, data.y_draw_offset);
         }
     }
     int x, y, image_id;

@@ -9,6 +9,7 @@ typedef enum {
     EMPIRE_OBJECT_SEA_TRADE_ROUTE = 5,
     EMPIRE_OBJECT_ROMAN_ARMY = 6,
     EMPIRE_OBJECT_ENEMY_ARMY = 7,
+    EMPIRE_OBJECT_TRADE_WAYPOINT = 8,
 } empire_object_type;
 
 typedef enum {
