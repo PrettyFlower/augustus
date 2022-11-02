@@ -100,12 +100,19 @@ void empire_object_load(buffer *buf, int version)
             for (int r = RESOURCE_MIN; r < RESOURCE_MAX; r++) {
                 full->city_buys_resource[r] = buffer_read_u8(buf);
             }
-        } else {
+        } else if (version <= SCENARIO_LAST_EMPIRE_RESOURCES_ALWAYS_WRITE) {
             for (int r = RESOURCE_MIN; r < RESOURCE_MAX; r++) {
                 full->city_sells_resource[r] = buffer_read_i32(buf);
             }
             for (int r = RESOURCE_MIN; r < RESOURCE_MAX; r++) {
                 full->city_buys_resource[r] = buffer_read_i32(buf);
+            }
+        } else if (obj->type == EMPIRE_OBJECT_CITY) {
+            for (int r = RESOURCE_MIN; r < RESOURCE_MAX; r++) {
+                full->city_sells_resource[r] = buffer_read_i16(buf);
+            }
+            for (int r = RESOURCE_MIN; r < RESOURCE_MAX; r++) {
+                full->city_buys_resource[r] = buffer_read_i16(buf);
             }
         }
         obj->invasion_path_id = buffer_read_u8(buf);
@@ -159,11 +166,14 @@ void empire_object_save(buffer *buf)
         buffer_write_i32(buf, 0);
         return;
     }
-    int size_per_obj = 198;
+    int size_per_obj = 78;
+    int size_per_city = 138;
     int total_size = 0;
     for (int i = 0; i < MAX_EMPIRE_OBJECTS; i++) {
         full_empire_object *full = &objects[i];
-        if (full->in_use) {
+        if (full->in_use && full->obj.type == EMPIRE_OBJECT_CITY) {
+            total_size += size_per_city;
+        } else if (full->in_use) {
             total_size += size_per_obj;
         } else {
             total_size += 2;
@@ -196,11 +206,13 @@ void empire_object_save(buffer *buf)
         buffer_write_u8(buf, obj->trade_route_id);
         buffer_write_u8(buf, full->trade_route_open);
         buffer_write_i16(buf, full->trade_route_cost);
-        for (int r = RESOURCE_MIN; r < RESOURCE_MAX; r++) {
-            buffer_write_i32(buf, full->city_sells_resource[r]);
-        }
-        for (int r = RESOURCE_MIN; r < RESOURCE_MAX; r++) {
-            buffer_write_i32(buf, full->city_buys_resource[r]);
+        if (obj->type == EMPIRE_OBJECT_CITY) {
+            for (int r = RESOURCE_MIN; r < RESOURCE_MAX; r++) {
+                buffer_write_i16(buf, full->city_sells_resource[r]);
+            }
+            for (int r = RESOURCE_MIN; r < RESOURCE_MAX; r++) {
+                buffer_write_i16(buf, full->city_buys_resource[r]);
+            }
         }
         buffer_write_u8(buf, obj->invasion_path_id);
         buffer_write_u8(buf, obj->invasion_years);

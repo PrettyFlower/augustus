@@ -64,7 +64,7 @@
 #define UNCOMPRESSED 0x80000000
 #define PIECE_SIZE_DYNAMIC 0
 
-static const int SAVE_GAME_CURRENT_VERSION = 0x8d;
+static const int SAVE_GAME_CURRENT_VERSION = 0x8e;
 
 static const int SAVE_GAME_LAST_ORIGINAL_LIMITS_VERSION = 0x66;
 static const int SAVE_GAME_LAST_SMALLER_IMAGE_ID_VERSION = 0x76;
@@ -84,6 +84,7 @@ static const int SAVE_GAME_LAST_ENEMY_ARMIES_BUFFER_BUG = 0x89;
 static const int SAVE_GAME_LAST_BARRACKS_TOWER_SENTRY_REQUEST = 0x8a;
 // static const int SAVE_GAME_LAST_WITHOUT_HIGHWAYS = 0x8b; no actual changes to how games are saved. Crudelios just wants this here
 static const int SAVE_GAME_LAST_UNVERSIONED_SCENARIOS = 0x8c;
+static const int SAVE_GAME_LAST_EMPIRE_RESOURCES_ALWAYS_WRITE = 0x8d;
 
 static char compress_buffer[COMPRESS_BUFFER_SIZE];
 
@@ -509,6 +510,9 @@ static int save_version_to_scenario_version(int save_version) {
     if (save_version <= SAVE_GAME_LAST_UNVERSIONED_SCENARIOS) {
         return SCENARIO_LAST_UNVERSIONED;
     }
+    if (save_version <= SAVE_GAME_LAST_EMPIRE_RESOURCES_ALWAYS_WRITE) {
+        return SCENARIO_LAST_EMPIRE_RESOURCES_ALWAYS_WRITE;
+    }
     return SCENARIO_CURRENT_VERSION;
 }
 
@@ -606,7 +610,7 @@ static void savegame_load_from_state(savegame_state *state, int version)
             version > SAVE_GAME_LAST_STATIC_MONUMENT_DELIVERIES_VERSION);
     }
     if (version > SAVE_GAME_LAST_UNVERSIONED_SCENARIOS) {
-        empire_object_load(state->custom_empire, version);
+        empire_object_load(state->custom_empire, scenario_version);
     }
     map_image_clear();
     map_image_update_all();
