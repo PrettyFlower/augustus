@@ -20,7 +20,6 @@
 #include "map/random.h"
 #include "map/terrain.h"
 #include "scenario/map.h"
-#include "scenario/property.h"
 
 #define OFFSET(x,y) (x + GRID_SIZE * y)
 
@@ -41,15 +40,9 @@ static int highway_image_without_water;
 
 void map_tiles_init(void)
 {
-    if (scenario_property_climate() == CLIMATE_DESERT) {
-        highway_image_start = assets_get_image_id("Logistics", "Highway_Tile_Start_Desert");
-        highway_image_with_water = assets_get_image_id("Logistics", "Highway_Aqueduct_Full_Start_Desert");
-        highway_image_without_water = assets_get_image_id("Logistics", "Highway_Aqueduct_Empty_Start_Desert");
-    } else {
-        highway_image_start = assets_get_image_id("Logistics", "Highway_Tile_Start");
-        highway_image_with_water = assets_get_image_id("Logistics", "Highway_Aqueduct_Full_Start");
-        highway_image_without_water = assets_get_image_id("Logistics", "Highway_Aqueduct_Empty_Start");
-    }
+    highway_image_start = assets_get_image_id("Logistics", "Highway_Tile_Start");
+    highway_image_with_water = assets_get_image_id("Logistics", "Highway_Aqueduct_Full_Start");
+    highway_image_without_water = assets_get_image_id("Logistics", "Highway_Aqueduct_Empty_Start");
 }
 
 static int is_clear(int x, int y, int size, int disallowed_terrain, int check_image)
@@ -773,9 +766,6 @@ static void set_aqueduct_image(int grid_offset, int is_road, const terrain_image
     int new_image_id = image_aqueduct + water_offset + group_offset;
     if (map_terrain_is(grid_offset, TERRAIN_HIGHWAY)) {
         new_image_id = highway_image_with_water;
-        if (map_grid_offset_to_x(grid_offset) == 79 && map_grid_offset_to_y(grid_offset) == 50) {
-            int a = 0;
-        }
         int aqueduct_orientation_offset = HIGHWAY_WALL_VARIANTS;
         if (map_terrain_is(grid_offset - 1, TERRAIN_AQUEDUCT) || map_terrain_is(grid_offset + 1, TERRAIN_AQUEDUCT)) {
             new_image_id += HIGHWAY_WALL_VARIANTS;
@@ -835,13 +825,9 @@ static void set_highway_image(int x, int y, int grid_offset)
         set_aqueduct_image(grid_offset, 0, img);
     } else {
         int highway_image_offset = get_highway_wall_offset(grid_offset);
-        int random = (map_random_get(grid_offset) & 1);
-        if (random > 0) {
-            // increment by 9 to get a variant
-            highway_image_offset += 9;
-        }
-        int image_id = highway_image_start;
-        image_id += highway_image_offset;
+        int random = (map_random_get(grid_offset) & 3);
+        highway_image_offset += HIGHWAY_WALL_VARIANTS * random;
+        int image_id = highway_image_start + highway_image_offset;
         map_image_set(grid_offset, image_id);
     }
     map_property_set_multi_tile_size(grid_offset, 1);
