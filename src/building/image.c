@@ -829,7 +829,11 @@ int building_image_get(building *b)
                 (orientation % 2) * building_properties_for_type(b->type)->rotation_offset;
         }
         case BUILDING_HIGHWAY:
-            return assets_get_image_id("Logistics", "Highway_Placement");
+            if (scenario_property_climate() == CLIMATE_DESERT) {
+                return assets_get_image_id("Logistics", "Highway_Placement_Desert");
+            } else {
+                return assets_get_image_id("Logistics", "Highway_Placement");
+            }
         default:
             return 0;
     }
