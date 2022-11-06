@@ -71,6 +71,7 @@
 #include "scenario/scenario.h"
 #include "sound/city.h"
 #include "sound/music.h"
+#include "widget/city_draw_highway.h"
 
 #include <string.h>
 
@@ -137,7 +138,7 @@ static void initialize_scenario_data(const uint8_t *scenario_name)
     scenario_map_init();
 
     // initialize grids
-    map_tiles_init();
+    city_draw_highway_init();
     map_tiles_update_all_elevation();
     map_tiles_update_all_water();
     map_tiles_update_all_earthquake();
