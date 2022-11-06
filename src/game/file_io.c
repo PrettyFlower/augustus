@@ -53,7 +53,6 @@
 #include "scenario/scenario.h"
 #include "sound/city.h"
 #include "widget/minimap.h"
-#include "widget/city_draw_highway.h"
 
 #include "zlib.h"
 
@@ -614,7 +613,6 @@ static void savegame_load_from_state(savegame_state *state, int version)
         empire_object_load(state->custom_empire, scenario_version);
     }
     map_image_clear();
-    city_draw_highway_init();
     map_image_update_all();
 }
 

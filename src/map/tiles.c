@@ -763,7 +763,8 @@ static void set_highway_image(int x, int y, int grid_offset)
         const terrain_image *img = map_image_context_get_aqueduct(grid_offset, 0);
         set_aqueduct_image(grid_offset, 0, img);
     } else {
-        map_image_set(grid_offset, city_draw_highway_base_image_start());
+        int highway_base = assets_lookup_image_id(ASSET_HIGHWAY_BASE_START);
+        map_image_set(grid_offset, highway_base);
     }
     map_property_set_multi_tile_size(grid_offset, 1);
     map_property_mark_draw_tile(grid_offset);

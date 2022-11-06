@@ -11,23 +11,6 @@
 #include "map/terrain.h"
 
 static int highway_wall_direction_offsets[4] = { 1, -GRID_SIZE, -1, GRID_SIZE };
-static int highway_base_start;
-static int highway_barrier_start;
-static int aqueduct_with_water;
-static int aqueduct_without_water;
-
-void city_draw_highway_init(void)
-{
-    highway_base_start = assets_get_image_id("Logistics", "Highway_Base_Start");
-    highway_barrier_start = assets_get_image_id("Logistics", "Highway_Barrier_Start");
-    aqueduct_with_water = assets_get_image_id("Logistics", "Aqueduct_Bridge_Left_Water");
-    aqueduct_without_water = assets_get_image_id("Logistics", "Aqueduct_Bridge_Left_Empty");
-}
-
-int city_draw_highway_base_image_start(void)
-{
-    return highway_base_start;
-}
 
 static int is_highway_access(int grid_offset)
 {
@@ -48,7 +31,7 @@ static int is_highway_access(int grid_offset)
 
 int city_draw_highway_get_aqueduct_image(int grid_offset)
 {
-    int aqueduct_image_id = aqueduct_with_water;
+    int aqueduct_image_id = assets_lookup_image_id(ASSET_AQUEDUCT_WITH_WATER);
     if (map_terrain_is(grid_offset - 1, TERRAIN_AQUEDUCT) || map_terrain_is(grid_offset + 1, TERRAIN_AQUEDUCT)) {
         aqueduct_image_id++;
     }
@@ -65,14 +48,14 @@ static void draw_wall_image(int grid_offset, int d, int x, int y, float scale)
         return;
     }
     int wall_offset = (d + city_view_orientation() / 2) % 4;
-    int wall_image_id = highway_barrier_start + wall_offset;
+    int wall_image_id = assets_lookup_image_id(ASSET_HIGHWAY_BARRIER_START) + wall_offset;
     image_draw_isometric_footprint_from_draw_tile(wall_image_id, x, y, 0, scale);
 }
 
 void city_draw_highway_footprint(int x, int y, float scale, int grid_offset)
 {
     int random_offset = map_random_get(grid_offset) & 15;
-    int base_image_id = highway_base_start + random_offset;
+    int base_image_id = assets_lookup_image_id(ASSET_HIGHWAY_BASE_START) + random_offset;
     image_draw_isometric_footprint_from_draw_tile(base_image_id, x, y, 0, scale);
     draw_wall_image(grid_offset, 1, x, y, scale);
     draw_wall_image(grid_offset, 2, x, y, scale);
