@@ -15,8 +15,8 @@
 #include "map/image.h"
 #include "map/property.h"
 #include "map/terrain.h"
+#include "map/tiles.h"
 #include "scenario/property.h"
-#include "widget/city_draw_highway.h"
 
 #include <string.h>
 
@@ -107,7 +107,7 @@ static void fill_aqueducts_from_offset(int grid_offset)
         map_aqueduct_set_water_access(grid_offset, 1);
         int image_id = map_image_at(grid_offset);
         if (map_terrain_is(grid_offset, TERRAIN_HIGHWAY)) {
-            image_id = city_draw_highway_get_aqueduct_image(grid_offset);
+            image_id = map_tiles_highway_get_aqueduct_image(grid_offset);
             map_image_set(grid_offset, image_id);
         } else if (image_id >= image_group(GROUP_BUILDING_AQUEDUCT_NO_WATER)) {
             map_image_set(grid_offset, image_id - 15);

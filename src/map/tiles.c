@@ -20,7 +20,6 @@
 #include "map/random.h"
 #include "map/terrain.h"
 #include "scenario/map.h"
-#include "widget/city_draw_highway.h"
 
 #define OFFSET(x,y) (x + GRID_SIZE * y)
 
@@ -687,11 +686,23 @@ int map_tiles_is_paved_road(int grid_offset)
     return 0;
 }
 
+int map_tiles_highway_get_aqueduct_image(int grid_offset)
+{
+    int aqueduct_image_id = assets_lookup_image_id(ASSET_AQUEDUCT_WITH_WATER);
+    if (map_terrain_is(grid_offset - 1, TERRAIN_AQUEDUCT) || map_terrain_is(grid_offset + 1, TERRAIN_AQUEDUCT)) {
+        aqueduct_image_id++;
+    }
+    if (!map_aqueduct_has_water_access_at(grid_offset)) {
+        aqueduct_image_id += 2;
+    }
+    return aqueduct_image_id;
+}
+
 static void set_aqueduct_image(int grid_offset, int is_road, const terrain_image *img)
 {
     int new_image_id = 0;
     if (map_terrain_is(grid_offset, TERRAIN_HIGHWAY)) {
-        new_image_id = city_draw_highway_get_aqueduct_image(grid_offset);
+        new_image_id = map_tiles_highway_get_aqueduct_image(grid_offset);
     } else {
         int group_offset = img->group_offset;
         if (is_road) {

@@ -9,6 +9,7 @@
 #include "map/grid.h"
 #include "map/random.h"
 #include "map/terrain.h"
+#include "map/tiles.h"
 
 static int highway_wall_direction_offsets[4] = { 1, -GRID_SIZE, -1, GRID_SIZE };
 
@@ -27,18 +28,6 @@ static int is_highway_access(int grid_offset)
         }
     }
     return 0;
-}
-
-int city_draw_highway_get_aqueduct_image(int grid_offset)
-{
-    int aqueduct_image_id = assets_lookup_image_id(ASSET_AQUEDUCT_WITH_WATER);
-    if (map_terrain_is(grid_offset - 1, TERRAIN_AQUEDUCT) || map_terrain_is(grid_offset + 1, TERRAIN_AQUEDUCT)) {
-        aqueduct_image_id++;
-    }
-    if (!map_aqueduct_has_water_access_at(grid_offset)) {
-        aqueduct_image_id += 2;
-    }
-    return aqueduct_image_id;
 }
 
 static void draw_wall_image(int grid_offset, int d, int x, int y, float scale)
@@ -60,7 +49,7 @@ void city_draw_highway_footprint(int x, int y, float scale, int grid_offset)
     draw_wall_image(grid_offset, 1, x, y, scale);
     draw_wall_image(grid_offset, 2, x, y, scale);
     if (map_terrain_is(grid_offset, TERRAIN_AQUEDUCT)) {
-        int aqueduct_image_id = city_draw_highway_get_aqueduct_image(grid_offset);
+        int aqueduct_image_id = map_tiles_highway_get_aqueduct_image(grid_offset);
         image_draw_isometric_footprint_from_draw_tile(aqueduct_image_id, x, y, 0, scale);
     }
     draw_wall_image(grid_offset, 0, x, y, scale);

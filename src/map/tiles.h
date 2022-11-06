@@ -20,6 +20,7 @@ void map_tiles_update_all_roads(void);
 void map_tiles_update_area_roads(int x, int y, int size);
 int map_tiles_set_road(int x, int y);
 
+int map_tiles_highway_get_aqueduct_image(int grid_offset);
 void map_tiles_update_all_highways(void);
 void map_tiles_update_area_highways(int x, int y, int size);
 int map_tiles_set_highway(int x, int y);
