@@ -79,11 +79,13 @@ static void set_all_aqueducts_to_no_water(void)
     for (int y = 0; y < map_data.height; y++, grid_offset += map_data.border_size) {
         for (int x = 0; x < map_data.width; x++, grid_offset++) {
             if (map_terrain_is(grid_offset, TERRAIN_AQUEDUCT)) {
-                int had_water_access = map_aqueduct_has_water_access_at(grid_offset);
                 map_aqueduct_set_water_access(grid_offset, 0);
                 int image_id = map_image_at(grid_offset);
                 if (image_id < image_group(GROUP_BUILDING_AQUEDUCT_NO_WATER)) {
                     map_image_set(grid_offset, image_id + 15);
+                } else if(map_terrain_is(grid_offset, TERRAIN_HIGHWAY)) {
+                    image_id = map_tiles_highway_get_aqueduct_image(grid_offset);
+                    map_image_set(grid_offset, image_id);
                 }
             }
         }
@@ -103,7 +105,6 @@ static void fill_aqueducts_from_offset(int grid_offset)
         if (++guard >= GRID_SIZE * GRID_SIZE) {
             break;
         }
-        int had_water_access = map_aqueduct_has_water_access_at(grid_offset);
         map_aqueduct_set_water_access(grid_offset, 1);
         int image_id = map_image_at(grid_offset);
         if (map_terrain_is(grid_offset, TERRAIN_HIGHWAY)) {
