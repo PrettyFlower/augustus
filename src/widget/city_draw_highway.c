@@ -36,7 +36,20 @@ static void draw_wall_image(int grid_offset, int d, int x, int y, float scale)
     if (is_highway_access(direction_offset)) {
         return;
     }
+
+    int last_direction_offset = grid_offset + highway_wall_direction_offsets[(d + 3) % 4];
+    // last barrier was a corner and will handle the rendering
+    if (!is_highway_access(last_direction_offset)) {
+        return;
+    }
+
     int wall_offset = (d + city_view_orientation() / 2) % 4;
+    int next_direction_offset = grid_offset + highway_wall_direction_offsets[(d + 1) % 4];
+    // is this a corner?
+    if (!is_highway_access(next_direction_offset)) {
+        // increment by 4 to get the corner image
+        wall_offset += 4;
+    }
     int wall_image_id = assets_lookup_image_id(ASSET_HIGHWAY_BARRIER_START) + wall_offset;
     image_draw_isometric_footprint_from_draw_tile(wall_image_id, x, y, 0, scale);
 }
