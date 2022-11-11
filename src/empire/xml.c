@@ -58,7 +58,7 @@ static const xml_parser_element xml_elements[XML_TOTAL_ELEMENTS] = {
     { "buys", xml_start_buys, xml_end_sells_buys_or_waypoints, "city" },
     { "sells", xml_start_sells, xml_end_sells_buys_or_waypoints, "city" },
     { "resource", xml_start_resource, 0, "buys|sells" },
-    { "trade_points", xml_start_waypoints, xml_end_sells_buys_or_waypoints, "cities" },
+    { "trade_points", xml_start_waypoints, xml_end_sells_buys_or_waypoints, "city" },
     { "point", xml_start_trade_point, 0, "trade_points" },
     { "invasion_paths", 0, 0, "empire" },
     { "path", xml_start_invasion_path, xml_end_invasion_path, "invasion_paths"},
@@ -97,19 +97,9 @@ static int xml_start_city(const char **attributes, int total_attributes)
     city_obj->obj.type = EMPIRE_OBJECT_CITY;
     city_obj->city_type = EMPIRE_CITY_TRADE;
     city_obj->obj.image_id = image_group(GROUP_EMPIRE_CITY_TRADE);
-    city_obj->obj.trade_route_id = data.next_empire_obj_id;
     city_obj->trade_route_cost = 500;
     city_obj->obj.width = 44;
     city_obj->obj.height = 36;
-    data.next_empire_obj_id++;
-
-    full_empire_object *route_obj = empire_object_get_full(city_obj->obj.trade_route_id);
-    route_obj->obj.id = city_obj->obj.trade_route_id;
-    data.current_trade_route_id = route_obj->obj.id;
-    route_obj->in_use = 1;
-    route_obj->obj.type = EMPIRE_OBJECT_LAND_TRADE_ROUTE;
-    route_obj->obj.trade_route_id = city_obj->obj.trade_route_id;
-    route_obj->obj.image_id = image_group(GROUP_EMPIRE_TRADE_ROUTE_TYPE) + 1;
 
     static const char *city_types[5] = { "roman", "ours", "trade", 0, "distant" };
     static const char *trade_route_types[2] = { "land", "sea" };
@@ -124,42 +114,50 @@ static int xml_start_city(const char **attributes, int total_attributes)
 
     int city_type = xml_parser_get_attribute_enum(attributes, "type", city_types, 5, EMPIRE_CITY_DISTANT_ROMAN);
     if (city_type < EMPIRE_CITY_DISTANT_ROMAN) {
-        log_error("Unable to determine type of city", name, 0);
+        city_obj->city_type = EMPIRE_CITY_TRADE;
     } else {
         city_obj->city_type = city_type;
-        switch (city_obj->city_type) {
-            case EMPIRE_CITY_OURS:
-                city_obj->obj.image_id = image_group(GROUP_EMPIRE_CITY);
-                break;
-            case EMPIRE_CITY_DISTANT_ROMAN:
-                city_obj->obj.image_id = image_group(GROUP_EMPIRE_CITY_DISTANT_ROMAN);
-                break;
-            case EMPIRE_CITY_DISTANT_FOREIGN:
-                city_obj->obj.image_id = image_group(GROUP_EMPIRE_FOREIGN_CITY);
-                break;
-            default:
-                city_obj->obj.image_id = image_group(GROUP_EMPIRE_CITY_TRADE);
-                break;
-        }
+    }
+    switch (city_obj->city_type) {
+        case EMPIRE_CITY_OURS:
+            city_obj->obj.image_id = image_group(GROUP_EMPIRE_CITY);
+            break;
+        case EMPIRE_CITY_DISTANT_ROMAN:
+            city_obj->obj.image_id = image_group(GROUP_EMPIRE_CITY_DISTANT_ROMAN);
+            break;
+        case EMPIRE_CITY_DISTANT_FOREIGN:
+            city_obj->obj.image_id = image_group(GROUP_EMPIRE_FOREIGN_CITY);
+            break;
+        default:
+            city_obj->obj.image_id = image_group(GROUP_EMPIRE_CITY_TRADE);
+            break;
     }
 
-    city_obj->trade_route_cost = xml_parser_get_attribute_int(attributes, "trade_route_cost");
-    int route_type = xml_parser_get_attribute_enum(attributes, "trade_route_type",
-        trade_route_types, 2, EMPIRE_OBJECT_LAND_TRADE_ROUTE);
-    if (route_type < EMPIRE_OBJECT_LAND_TRADE_ROUTE) {
-        log_error("Unable to determine trade route type", name, 0);
-    } else {
-        route_obj->obj.type = route_type;
-        if (route_type == EMPIRE_OBJECT_SEA_TRADE_ROUTE) {
-            route_obj->obj.image_id--;
-        }
-    }
+    if (city_obj->city_type == EMPIRE_CITY_TRADE) {
+        full_empire_object *route_obj = empire_object_get_full(data.next_empire_obj_id);
+        route_obj->obj.id = data.next_empire_obj_id;
+        city_obj->obj.trade_route_id = route_obj->obj.id;
+        data.current_trade_route_id = route_obj->obj.id;
+        data.next_empire_obj_id++;
+        route_obj->in_use = 1;
+        route_obj->obj.type = EMPIRE_OBJECT_LAND_TRADE_ROUTE;
+        route_obj->obj.trade_route_id = city_obj->obj.trade_route_id;
 
-    if (city_obj->city_type != EMPIRE_CITY_TRADE) {
-        memset(route_obj, 0, sizeof(full_empire_object));
-        city_obj->obj.trade_route_id = 0;
-        data.next_empire_obj_id--;
-        data.current_trade_route_id = -1;
+        route_obj->obj.type = xml_parser_get_attribute_enum(attributes, "trade_route_type",
+            trade_route_types, 2, EMPIRE_OBJECT_LAND_TRADE_ROUTE);
+        if (route_obj->obj.type < EMPIRE_OBJECT_LAND_TRADE_ROUTE) {
+            route_obj->obj.type = EMPIRE_OBJECT_LAND_TRADE_ROUTE;
+        }
+        if (route_obj->obj.type == EMPIRE_OBJECT_SEA_TRADE_ROUTE) {
+            route_obj->obj.image_id = image_group(GROUP_EMPIRE_TRADE_ROUTE_TYPE);
+        } else {
+            route_obj->obj.image_id = image_group(GROUP_EMPIRE_TRADE_ROUTE_TYPE) + 1;
+        }
+
+        city_obj->trade_route_cost = xml_parser_get_attribute_int(attributes, "trade_route_cost");
+        if (!city_obj->trade_route_cost) {
+            city_obj->trade_route_cost = 500;
+        }
     }
 
     return 1;
