@@ -61,14 +61,14 @@ void file_append_extension(char *filename, const char *extension)
         filename++;
     } while (c);
     filename--;
-    filename[0] = '.';
+    *filename = '.';
     filename++;
     int len = strlen(extension);
     for (int i = 0; i < len; i++) {
-        filename[0] = extension[i];
+        *filename = extension[i];
         filename++;
     }
-    filename[0] = 0;
+    *filename = 0;
 }
 
 void file_remove_extension(char *filename)
