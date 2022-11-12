@@ -23,6 +23,7 @@ const map_routing_distance_grid *map_routing_get_distance_grid(void);
 
 void map_routing_calculate_distances(int x, int y);
 void map_routing_calculate_distances_water_boat(int x, int y);
+void map_routing_calculate_distances_best_dock_tile(int ship_x, int ship_y, int dock_x, int dock_y);
 void map_routing_calculate_distances_water_flotsam(int x, int y);
 
 int map_routing_calculate_distances_for_building(routed_building_type type, int x, int y);
@@ -30,6 +31,7 @@ int map_routing_calculate_distances_for_building(routed_building_type type, int 
 void map_routing_delete_first_wall_or_aqueduct(int x, int y);
 
 int map_routing_distance(int grid_offset);
+int map_routing_best_tile(void);
 
 int map_routing_citizen_can_travel_over_land(int src_x, int src_y, int dst_x, int dst_y);
 int map_routing_citizen_can_travel_over_road_garden(int src_x, int src_y, int dst_x, int dst_y);

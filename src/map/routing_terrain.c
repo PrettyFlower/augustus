@@ -7,6 +7,7 @@
 #include "map/building.h"
 #include "map/data.h"
 #include "map/image.h"
+#include "map/figure.h"
 #include "map/property.h"
 #include "map/random.h"
 #include "map/routing_data.h"
@@ -237,26 +238,25 @@ void map_routing_update_water(void)
     int grid_offset = map_data.start_offset;
     for (int y = 0; y < map_data.height; y++, grid_offset += map_data.border_size) {
         for (int x = 0; x < map_data.width; x++, grid_offset++) {
-            if (map_terrain_is(grid_offset, TERRAIN_WATER) && is_surrounded_by_water(grid_offset)) {
-                if (x > 0 && x < map_data.width - 1 &&
-                    y > 0 && y < map_data.height - 1) {
-                    switch (map_sprite_bridge_at(grid_offset)) {
-                        case 5:
-                        case 6: // low bridge middle section
-                            terrain_water.items[grid_offset] = WATER_N3_LOW_BRIDGE;
-                            break;
-                        case 13: // ship bridge pillar
-                            terrain_water.items[grid_offset] = WATER_N1_BLOCKED;
-                            break;
-                        default:
-                            terrain_water.items[grid_offset] = WATER_0_PASSABLE;
-                            break;
-                    }
-                } else {
-                    terrain_water.items[grid_offset] = WATER_N2_MAP_EDGE;
-                }
-            } else {
+            if (!map_terrain_is(grid_offset, TERRAIN_WATER) || !is_surrounded_by_water(grid_offset)) {
                 terrain_water.items[grid_offset] = WATER_N1_BLOCKED;
+                continue;
+            }
+            if (x <= 0 || y <= 0 || x >= map_data.width - 1 || y >= map_data.height - 1) {
+                terrain_water.items[grid_offset] = WATER_N2_MAP_EDGE;
+                continue;
+            }
+            switch (map_sprite_bridge_at(grid_offset)) {
+                case 5:
+                case 6: // low bridge middle section
+                    terrain_water.items[grid_offset] = WATER_N3_LOW_BRIDGE;
+                    break;
+                case 13: // ship bridge pillar
+                    terrain_water.items[grid_offset] = WATER_N1_BLOCKED;
+                    break;
+                default:
+                    terrain_water.items[grid_offset] = WATER_0_PASSABLE;
+                    break;
             }
         }
     }

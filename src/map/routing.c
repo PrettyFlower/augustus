@@ -56,6 +56,10 @@ static struct {
 static struct {
     int through_building_id;
     int dest_building_id;
+    struct {
+        int distance;
+        int grid_offset;
+    } best_tile;
 } state;
 
 static void reset_fighting_status(void)
@@ -273,14 +277,28 @@ void map_routing_calculate_distances(int x, int y)
     route_queue_all_from(map_grid_offset(x, y), DIRECTIONS_NO_DIAGONALS, callback_calc_distance, 0, 1);
 }
 
+static int has_moored_ship(int grid_offset)
+{
+    int figure_id = map_figure_at(grid_offset);
+    while (figure_id) {
+        figure *f = figure_get(figure_id);
+        if (f->type == FIGURE_TRADE_SHIP && (f->state == FIGURE_ACTION_112_TRADE_SHIP_MOORED || f->state == FIGURE_ACTION_114_TRADE_SHIP_ANCHORED)) {
+            return 1;
+        }
+        figure_id = f->next_figure_id_on_same_tile;
+    }
+    return 0;
+}
+
 static int callback_calc_distance_water_boat(int next_offset, int dist, int direction)
 {
-    if (terrain_water.items[next_offset] != WATER_N1_BLOCKED &&
-        terrain_water.items[next_offset] != WATER_N3_LOW_BRIDGE) {
-        enqueue(next_offset, dist);
-        if (terrain_water.items[next_offset] == WATER_N2_MAP_EDGE) {
-            distance.determined.items[next_offset] += 4;
-        }
+    int terrain = terrain_water.items[next_offset];
+    if (terrain == WATER_N1_BLOCKED || terrain == WATER_N3_LOW_BRIDGE) {
+        return 1;
+    }
+    enqueue(next_offset, dist);
+    if (terrain == WATER_N2_MAP_EDGE || has_moored_ship(next_offset)) {
+        distance.determined.items[next_offset] += 4;
     }
     return 1;
 }
@@ -293,6 +311,33 @@ void map_routing_calculate_distances_water_boat(int x, int y)
     } else {
         route_queue_all_from(grid_offset, DIRECTIONS_NO_DIAGONALS, callback_calc_distance_water_boat, 1, 1);
     }
+}
+
+static int callback_calc_distance_best_dock_tile(int next_offset, int dist, int direction)
+{
+    int terrain = terrain_water.items[next_offset];
+    if (terrain == WATER_N1_BLOCKED || terrain == WATER_N3_LOW_BRIDGE || has_moored_ship(next_offset)) {
+        return 1;
+    }
+    enqueue(next_offset, dist);
+    int x = map_grid_offset_to_x(next_offset);
+    int y = map_grid_offset_to_y(next_offset);
+    int distance_to_dest = distance_left(x, y);
+    if (state.best_tile.distance == -1 || distance_to_dest < state.best_tile.distance) {
+        state.best_tile.distance = distance_to_dest;
+        state.best_tile.grid_offset = next_offset;
+    }
+    return 1;
+}
+
+void map_routing_calculate_distances_best_dock_tile(int ship_x, int ship_y, int dock_x, int dock_y)
+{
+    distance.dst_x = dock_x;
+    distance.dst_y = dock_y;
+    state.best_tile.distance = -1;
+    state.best_tile.grid_offset = -1;
+    int grid_offset = map_grid_offset(ship_x, ship_y);
+    route_queue_all_from(grid_offset, DIRECTIONS_NO_DIAGONALS, callback_calc_distance_best_dock_tile, 1, 1);
 }
 
 static int callback_calc_distance_water_flotsam(int next_offset, int dist, int direction)
@@ -693,6 +738,11 @@ void map_routing_block(int x, int y, int size)
 int map_routing_distance(int grid_offset)
 {
     return distance.determined.items[grid_offset];
+}
+
+int map_routing_best_tile(void)
+{
+    return state.best_tile.grid_offset;
 }
 
 void map_routing_save_state(buffer *buf)

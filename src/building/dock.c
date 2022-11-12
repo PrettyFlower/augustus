@@ -226,7 +226,7 @@ static int get_free_destination(int ship_id, int exclude_dock_id, map_point *til
         return 0;
     }
     building *dock = building_get(dock_id);
-    building_dock_get_ship_request_tile(dock, SHIP_DOCK_REQUEST_2_FIRST_QUEUE, tile);
+    building_dock_get_ship_request_tile(dock, ship_id, SHIP_DOCK_REQUEST_2_FIRST_QUEUE, tile);
     return dock_id;
 }
 
@@ -251,7 +251,7 @@ static int get_queue_destination(int ship_id, int exclude_dock_id, ship_dock_req
         }
 
         map_point requested_tile;
-        building_dock_get_ship_request_tile(dock, request_type, &requested_tile);
+        building_dock_get_ship_request_tile(dock, ship_id, request_type, &requested_tile);
 
         int figure_at_offset = map_figure_at(map_grid_offset(requested_tile.x, requested_tile.y));
         if (figure_at_offset && figure_at_offset != ship_id) {
@@ -372,7 +372,7 @@ int building_dock_get_closer_free_destination(int ship_id, ship_dock_request_typ
     }
 
     if (dock_id) {
-        building_dock_get_ship_request_tile(building_get(dock_id), request_type, tile);
+        building_dock_get_ship_request_tile(building_get(dock_id), ship_id, request_type, tile);
     }
 
     return dock_id;
@@ -406,16 +406,32 @@ int building_dock_request_docking(int ship_id, int dock_id, map_point *tile)
 {
     building *dock = building_get(dock_id);
     if ((!dock->data.dock.trade_ship_id || dock->data.dock.trade_ship_id == ship_id)) {
-        building_dock_get_ship_request_tile(dock, SHIP_DOCK_REQUEST_1_DOCKING, tile);
+        building_dock_get_ship_request_tile(dock, ship_id, SHIP_DOCK_REQUEST_1_DOCKING, tile);
         return 1;
     }
     return 0;
 }
 
-void building_dock_get_ship_request_tile(const building *dock, ship_dock_request_type request_type, map_point *tile)
+void building_dock_get_ship_request_tile(const building *dock, int ship_id, ship_dock_request_type request_type, map_point *tile)
 {
-    int dx, dy, grid_offset;
-    switch (request_type) {
+    figure *ship = figure_get(ship_id);
+    int dx, dy, dst_x, dst_y;
+    switch (dock->data.dock.orientation) {
+        case 0: dx = 1; dy = -1; break;
+        case 1: dx = 3; dy = 1; break;
+        case 2: dx = 1; dy = 3; break;
+        default: dx = -1; dy = 1; break;
+    }
+    dst_x = dock->x + dx;
+    dst_y = dock->y + dy;
+    map_routing_calculate_distances_best_dock_tile(ship->x, ship->y, dst_x, dst_y);
+    int dst_offset = map_routing_best_tile();
+    if (dst_offset != -1) {
+        dst_x = map_grid_offset_to_x(dst_offset);
+        dst_y = map_grid_offset_to_y(dst_offset);
+    }
+    map_point_store_result(dst_x, dst_y, tile);
+    /*switch (request_type) {
         case SHIP_DOCK_REQUEST_1_DOCKING:
             switch (dock->data.dock.orientation) {
                 case 0: dx = 1; dy = -1; break;
@@ -440,6 +456,7 @@ void building_dock_get_ship_request_tile(const building *dock, ship_dock_request
                     default: dx = -1; dy = 2; break;
                 }
             }
+            grid_offset = map_grid_offset(dock->x + dx, dock->y + dy);
             if (!map_terrain_is(grid_offset, TERRAIN_WATER) || terrain_water.items[grid_offset] == WATER_N1_BLOCKED) {
                 switch (dock->data.dock.orientation) {
                     case 0: dx = 1; dy = 0; break;
@@ -466,6 +483,7 @@ void building_dock_get_ship_request_tile(const building *dock, ship_dock_request
                     default: dx = -1; dy = 0; break;
                 }
             }
+            grid_offset = map_grid_offset(dock->x + dx, dock->y + dy);
             if (!map_terrain_is(grid_offset, TERRAIN_WATER) || terrain_water.items[grid_offset] == WATER_N1_BLOCKED) {
                 switch (dock->data.dock.orientation) {
                     case 0: dx = 0; dy = -3; break;
@@ -476,7 +494,7 @@ void building_dock_get_ship_request_tile(const building *dock, ship_dock_request
             }
             break;
     }
-    map_point_store_result(dock->x + dx, dock->y + dy, tile);
+    map_point_store_result(dock->x + dx, dock->y + dy, tile);*/
 }
 
 int building_dock_is_working(int dock_id)
@@ -491,8 +509,8 @@ int building_dock_reposition_anchored_ship(int ship_id, map_point *tile)
     building *dock = building_get(ship->destination_building_id);
     map_point tile_first_queue;
     map_point tile_second_queue;
-    building_dock_get_ship_request_tile(dock, SHIP_DOCK_REQUEST_2_FIRST_QUEUE, &tile_first_queue);
-    building_dock_get_ship_request_tile(dock, SHIP_DOCK_REQUEST_4_SECOND_QUEUE, &tile_second_queue);
+    building_dock_get_ship_request_tile(dock, ship_id, SHIP_DOCK_REQUEST_2_FIRST_QUEUE, &tile_first_queue);
+    //building_dock_get_ship_request_tile(dock, SHIP_DOCK_REQUEST_4_SECOND_QUEUE, &tile_second_queue);
     if (map_figure_at(ship->grid_offset) != ship->id) {
         if (ship->grid_offset == map_grid_offset(tile_first_queue.x, tile_first_queue.y) && !map_has_figure_at(map_grid_offset(tile_second_queue.x, tile_second_queue.y))) {
             map_point_store_result(tile_second_queue.x, tile_second_queue.y, tile);
