@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 FILE *file_open(const char *filename, const char *mode)
 {
@@ -61,10 +62,13 @@ void file_append_extension(char *filename, const char *extension)
     } while (c);
     filename--;
     filename[0] = '.';
-    filename[1] = extension[0];
-    filename[2] = extension[1];
-    filename[3] = extension[2];
-    filename[4] = 0;
+    filename++;
+    int len = strlen(extension);
+    for (int i = 0; i < len; i++) {
+        filename[0] = extension[i];
+        filename++;
+    }
+    filename[0] = 0;
 }
 
 void file_remove_extension(char *filename)
