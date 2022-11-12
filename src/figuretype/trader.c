@@ -815,7 +815,7 @@ void figure_trade_ship_action(figure *f)
                     f->destination_y = tile.y;
                     figure_route_remove(f);
                 }
-                if ((dock_id = building_dock_get_closer_free_destination(f->id, SHIP_DOCK_REQUEST_2_FIRST_QUEUE, &tile))) {
+                if ((dock_id = building_dock_get_closer_free_destination(f->id, &tile))) {
                     f->action_state = FIGURE_ACTION_113_TRADE_SHIP_GOING_TO_DOCK_QUEUE;
                     f->destination_building_id = dock_id;
                     f->destination_x = tile.x;
@@ -867,7 +867,7 @@ void figure_trade_ship_action(figure *f)
                     building *dock = building_get(f->destination_building_id);
                     dock->data.dock.trade_ship_id = f->id;
                 } else if (
-                    (dock_id = building_dock_get_closer_free_destination(f->id, SHIP_DOCK_REQUEST_1_DOCKING, &tile)) &&
+                    (dock_id = building_dock_get_closer_free_destination(f->id, &tile)) &&
                     building_dock_request_docking(f->id, dock_id, &tile)
                     ) {
                     f->action_state = FIGURE_ACTION_111_TRADE_SHIP_GOING_TO_DOCK;
@@ -1079,7 +1079,7 @@ int figure_trader_ship_get_distance_to_dock(const figure *ship, int dock_id)
     map_routing_calculate_distances_water_boat(ship->x, ship->y);
     uint8_t path[500];
     map_point tile;
-    building_dock_get_ship_request_tile(dock, ship->id, SHIP_DOCK_REQUEST_1_DOCKING, &tile);
+    building_dock_get_ship_request_tile(dock, ship->id, &tile);
     int path_length = map_routing_get_path_on_water(&path[0], tile.x, tile.y, 0);
     return path_length;
 }
