@@ -32,7 +32,6 @@
 #include "window/trade_prices.h"
 
 #include <math.h>
-#include <stdlib.h>
 
 #define MAX_WIDTH 2032
 #define MAX_HEIGHT 1136
@@ -165,7 +164,10 @@ static void draw_trade_resource(resource_type resource, int trade_max, int x_off
 
 void window_empire_draw_resource_shields(int trade_max, int x_offset, int y_offset)
 {
-    int img_offset = min(trade_max / 100, 4);
+    int img_offset = trade_max / 100;
+    if (img_offset > 4) {
+        img_offset = 4;
+    }
     int num_shields = (trade_max % 100) / 20 + 1;
     if (trade_max >= 600) {
         num_shields = 5;
