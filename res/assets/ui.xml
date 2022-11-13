@@ -230,4 +230,11 @@
 	<image id="SeaRouteDot" width="5" height="5">
 		<layer group="182" image="7"/>
 	</image>
+	<image id="TradeAmount">
+		<layer group="243"/>
+	</image>
+	<image src="empire_silver_shield" />
+	<image src="empire_gold_shield" />
+	<image src="empire_red_shield" />
+	<image src="empire_purple_shield" />
 </assetlist>
