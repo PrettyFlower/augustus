@@ -164,27 +164,35 @@ static void draw_trade_resource(resource_type resource, int trade_max, int x_off
 
 void window_empire_draw_resource_shields(int trade_max, int x_offset, int y_offset)
 {
-    int img_offset = trade_max / 100;
-    if (img_offset > 4) {
-        img_offset = 4;
-    }
-    int num_shields = (trade_max % 100) / 20 + 1;
+    int num_bronze_shields = (trade_max % 100) / 20 + 1;
     if (trade_max >= 600) {
-        num_shields = 5;
+        num_bronze_shields = 5;
     }
-    int shield_image_id = assets_lookup_image_id(ASSET_TRADE_AMOUNT) + img_offset;
+
     int top_left_x;
-    if (num_shields == 1) {
+    if (num_bronze_shields == 1) {
         top_left_x = x_offset + 19;
-    } else if (num_shields == 2) {
+    } else if (num_bronze_shields == 2) {
         top_left_x = x_offset + 15;
     } else {
         top_left_x = x_offset + 11;
     }
     int top_left_y = y_offset - 1;
-    for (int i = 0; i < num_shields; i++) {
+    int bronze_shield = image_group(GROUP_TRADE_AMOUNT);
+    for (int i = 0; i < num_bronze_shields; i++) {
         px_point pt = trade_amount_px_offsets[i];
-        image_draw(shield_image_id, top_left_x + pt.x, top_left_y + pt.y, COLOR_MASK_NONE, SCALE_NONE);
+        image_draw(bronze_shield, top_left_x + pt.x, top_left_y + pt.y, COLOR_MASK_NONE, SCALE_NONE);
+    }
+
+    int num_gold_shields = trade_max / 100;
+    if (num_gold_shields > 5) {
+        num_gold_shields = 5;
+    }
+    top_left_x = x_offset - 1;
+    top_left_y = y_offset + 22;
+    int gold_shield = assets_lookup_image_id(ASSET_GOLD_SHIELD);
+    for (int i = 0; i < num_gold_shields; i++) {
+        image_draw(gold_shield, top_left_x + i * 3, top_left_y, COLOR_MASK_NONE, SCALE_NONE);
     }
 }
 
