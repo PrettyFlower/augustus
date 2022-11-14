@@ -73,7 +73,10 @@ static int next_is_better(
 
 int map_routing_get_path(uint8_t *path, int src_x, int src_y, int dst_x, int dst_y, int num_directions)
 {
-    // ensure we always use the true shortest path rather than looping back over the scored tiles
+    // ensure we always use the true shortest path rather than looping back over the scored tiles.
+    // once diagonals are made to appear just as good as straight tiles, spaces adjacent to highways
+    // look as good as highways since we only check if the active tile is a highway to see if units
+    // get a speed boost
     int dst_grid_offset = map_grid_offset(dst_x, dst_y);
     map_routing_distance_grid *grid = map_routing_get_distance_grid();
 
