@@ -7,4 +7,6 @@ int map_routing_get_path(uint8_t *path, int src_x, int src_y, int dst_x, int dst
 
 int map_routing_get_path_on_water(uint8_t *path, int dst_x, int dst_y, int is_flotsam);
 
+int map_routing_top_path_found(void);
+
 #endif // MAP_ROUTING_PATH_H

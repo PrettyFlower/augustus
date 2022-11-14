@@ -235,6 +235,7 @@ void building_maintenance_check_fire_collapse(void)
 
 void building_maintenance_check_rome_access(void)
 {
+    return;
     const map_tile *entry_point = city_map_entry_point();
     map_routing_calculate_distances(entry_point->x, entry_point->y);
     int problem_grid_offset = 0;

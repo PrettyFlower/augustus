@@ -77,6 +77,7 @@ static void clear_data(void)
     reset_fighting_status();
     map_grid_clear_i16(distance.possible.items);
     map_grid_clear_i16(distance.determined.items);
+    map_grid_clear_i16(distance.parents.items);
     queue.head = 0;
     queue.tail = 0;
 }
@@ -151,7 +152,7 @@ static inline void ordered_queue_reduce_index(int index, int offset, int dist)
     }
 }
 
-static void ordered_enqueue(int next_offset, int current_dist, int remaining_dist)
+static void ordered_enqueue(int next_offset, int last_offset, int current_dist, int remaining_dist)
 {
     int possible_dist = remaining_dist + current_dist;
     int index = queue.tail;
@@ -171,6 +172,7 @@ static void ordered_enqueue(int next_offset, int current_dist, int remaining_dis
     }
     distance.determined.items[next_offset] = current_dist;
     distance.possible.items[next_offset] = possible_dist;
+    distance.parents.items[next_offset] = last_offset;
 
     ordered_queue_reduce_index(index, next_offset, possible_dist);
 }
@@ -189,7 +191,9 @@ static inline int distance_left(int x, int y)
 static int receive_highway_bonus(int offset, int direction)
 {
     int highway_directions = HIGHWAY_DIRECTIONS[direction];
-    if (map_terrain_is(offset, highway_directions)) {
+    // favoring one side of the highway leads to slightly inconsistent results as units travelling on a highway
+    // get the speed bonus regardless
+    if (map_terrain_is(offset, /*highway_directions*/ TERRAIN_HIGHWAY)) {
         return 1;
     }
     return 0;
@@ -202,7 +206,7 @@ static void route_queue_from_to(int src_x, int src_y, int dst_x, int dst_y, int 
     distance.dst_x = dst_x;
     distance.dst_y = dst_y;
     int dest = map_grid_offset(dst_x, dst_y);
-    ordered_enqueue(map_grid_offset(src_x, src_y), 1, 0);
+    ordered_enqueue(map_grid_offset(src_x, src_y), -1, 1, 0);
     int tiles = 0;
     while (queue.tail) {
         int offset = ordered_queue_pop();
@@ -212,7 +216,8 @@ static void route_queue_from_to(int src_x, int src_y, int dst_x, int dst_y, int 
         int x = map_grid_offset_to_x(offset);
         int y = map_grid_offset_to_y(offset);
         distance.possible.items[offset] = 1;
-        for (int i = 0; i < 4; i++) {
+        // not taking diagonals into account makes straight paths appear more favorable than they really are
+        for (int i = 0; i < 8; i++) {
             int next_offset = offset + ROUTE_OFFSETS[i];
             int remaining_dist = distance_left(x + ROUTE_OFFSETS_X[i], y + ROUTE_OFFSETS_Y[i]);
             int dist = 2 + distance.determined.items[offset];
@@ -220,7 +225,7 @@ static void route_queue_from_to(int src_x, int src_y, int dst_x, int dst_y, int 
                 dist--;
             }
             if (valid_offset(next_offset, dist) && callback(offset, next_offset, i)) {
-                ordered_enqueue(next_offset, dist, remaining_dist);
+                ordered_enqueue(next_offset, offset, dist, remaining_dist);
             }
         }
     }

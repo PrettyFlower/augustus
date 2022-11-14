@@ -15,6 +15,7 @@ typedef enum {
 typedef struct map_routing_distance_grid {
     grid_i16 possible;
     grid_i16 determined;
+    grid_i16 parents;
     int dst_x;
     int dst_y;
 } map_routing_distance_grid;

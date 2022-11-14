@@ -50,6 +50,9 @@ void figure_route_clean(void)
 
 void figure_route_add(figure *f)
 {
+    if (f->type != FIGURE_FORT_LEGIONARY /*|| map_routing_top_path_found()*/) {
+        return;
+    }
     f->routing_path_id = 0;
     f->routing_path_current_tile = 0;
     f->routing_path_length = 0;

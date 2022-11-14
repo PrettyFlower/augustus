@@ -10,6 +10,7 @@
 #define MAX_PATH 500
 
 static int direction_path[MAX_PATH];
+static int top_path_found = 0;
 
 static void adjust_tile_in_direction(int direction, int *x, int *y, int *grid_offset)
 {
@@ -58,11 +59,11 @@ static int next_is_better(
 )
 {
     // always prefer highways so walkers don't cut across empty land
-    if (!is_highway && next_is_highway && next_distance < base_distance) {
+    /*if (!is_highway && next_is_highway && next_distance < base_distance) {
         return 1;
     } else if (is_highway && !next_is_highway) {
         return 0;
-    } else if (next_distance < distance) {
+    } else*/ if (next_distance < distance) {
         return 1;
     } else if (next_distance == distance && (next_direction == general_direction || direction == -1)) {
         return 1;
@@ -72,7 +73,34 @@ static int next_is_better(
 
 int map_routing_get_path(uint8_t *path, int src_x, int src_y, int dst_x, int dst_y, int num_directions)
 {
+    // ensure we always use the true shortest path rather than looping back over the scored tiles
     int dst_grid_offset = map_grid_offset(dst_x, dst_y);
+    map_routing_distance_grid *grid = map_routing_get_distance_grid();
+
+    int current = dst_grid_offset;
+    int parent = grid->parents.items[current];
+    int num_tiles = 0;
+    while (parent && parent != -1) {
+        int cur_x = map_grid_offset_to_x(current);
+        if (cur_x < 35) {
+            top_path_found = 1;
+        }
+        int cur_y = map_grid_offset_to_y(current);
+        int par_x = map_grid_offset_to_x(parent);
+        int par_y = map_grid_offset_to_y(parent);
+        direction_type direction = calc_general_direction(cur_x, cur_y, par_x, par_y);
+        direction_type forward_dir = (direction + 4) % 8;
+        direction_path[num_tiles] = forward_dir;
+        num_tiles++;
+        current = parent;
+        parent = grid->parents.items[current];
+    }
+    for (int i = 0; i < num_tiles; i++) {
+        path[i] = direction_path[num_tiles - i - 1];
+    }
+    return num_tiles;
+
+    /*int dst_grid_offset = map_grid_offset(dst_x, dst_y);
     int distance = map_routing_distance(dst_grid_offset);
     if (distance <= 0 || distance >= 998) {
         return 0;
@@ -117,7 +145,7 @@ int map_routing_get_path(uint8_t *path, int src_x, int src_y, int dst_x, int dst
     for (int i = 0; i < num_tiles; i++) {
         path[i] = direction_path[num_tiles - i - 1];
     }
-    return num_tiles;
+    return num_tiles;*/
 }
 
 int map_routing_get_path_on_water(uint8_t *path, int dst_x, int dst_y, int is_flotsam)
@@ -172,4 +200,9 @@ int map_routing_get_path_on_water(uint8_t *path, int dst_x, int dst_y, int is_fl
         path[i] = direction_path[num_tiles - i - 1];
     }
     return num_tiles;
+}
+
+int map_routing_top_path_found(void)
+{
+    return top_path_found;
 }
