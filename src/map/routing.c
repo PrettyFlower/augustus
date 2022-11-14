@@ -31,6 +31,10 @@ static const int HIGHWAY_DIRECTIONS[] = {
     TERRAIN_HIGHWAY_BOTTOM_LEFT | TERRAIN_HIGHWAY_BOTTOM_RIGHT, // right
     TERRAIN_HIGHWAY_TOP_LEFT | TERRAIN_HIGHWAY_BOTTOM_LEFT, // down
     TERRAIN_HIGHWAY_TOP_LEFT | TERRAIN_HIGHWAY_TOP_RIGHT, // left
+    0,
+    0,
+    0,
+    0
 };
 
 static map_routing_distance_grid distance;
@@ -212,10 +216,14 @@ static void route_queue_from_to(int src_x, int src_y, int dst_x, int dst_y, int 
         int x = map_grid_offset_to_x(offset);
         int y = map_grid_offset_to_y(offset);
         distance.possible.items[offset] = 1;
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 8; i++) {
             int next_offset = offset + ROUTE_OFFSETS[i];
             int remaining_dist = distance_left(x + ROUTE_OFFSETS_X[i], y + ROUTE_OFFSETS_Y[i]);
             int dist = 2 + distance.determined.items[offset];
+            // make diagonals less favorable
+            if (i >= 4) {
+                dist++;
+            }
             if (receive_highway_bonus(offset, i)) {
                 dist--;
             }
