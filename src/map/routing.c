@@ -220,11 +220,7 @@ static void route_queue_from_to(int src_x, int src_y, int dst_x, int dst_y, int 
             int next_offset = offset + ROUTE_OFFSETS[i];
             int remaining_dist = distance_left(x + ROUTE_OFFSETS_X[i], y + ROUTE_OFFSETS_Y[i]);
             int dist = 2 + distance.determined.items[offset];
-            // make diagonals less favorable
-            if (i >= 4) {
-                dist++;
-            }
-            if (receive_highway_bonus(offset, i)) {
+            if (receive_highway_bonus(next_offset, i)) {
                 dist--;
             }
             if (valid_offset(next_offset, dist) && callback(offset, next_offset, i)) {
