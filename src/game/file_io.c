@@ -13,7 +13,7 @@
 #include "core/dir.h"
 #include "core/file.h"
 #include "core/log.h"
-#include "core/memblock.h"
+#include "core/memory_block.h"
 #include "core/random.h"
 #include "core/string.h"
 #include "core/zip.h"
@@ -760,43 +760,43 @@ static void write_int32(FILE *fp, int value)
     fwrite(&data, 1, 4, fp);
 }
 
-static int read_compressed_chunk(FILE *fp, void *buffer, int bytes_to_read, int read_as_zlib, memblock *compress_buffer)
+static int read_compressed_chunk(FILE *fp, void *buffer, int bytes_to_read, int read_as_zlib, memory_block *compress_buffer)
 {
-    if (!core_memblock_check_size(compress_buffer, bytes_to_read)) {
+    if (!core_memory_block_fit_bytes(compress_buffer, bytes_to_read)) {
         return 0;
     }
     int input_size = read_int32(fp);
     if ((unsigned int)input_size == UNCOMPRESSED) {
         return fread(buffer, 1, bytes_to_read, fp) == bytes_to_read;
     } else {
-        if (fread(compress_buffer->mem, 1, input_size, fp) != input_size) {
+        if (fread(compress_buffer->memory, 1, input_size, fp) != input_size) {
             return 0;
         }
 
         if (!read_as_zlib) {
-            return zip_decompress(compress_buffer->mem, input_size, buffer, &bytes_to_read);
+            return zip_decompress(compress_buffer->memory, input_size, buffer, &bytes_to_read);
         } else {
             int output_size = 0;
-            return zlib_helper_decompress(compress_buffer->mem, input_size, buffer, bytes_to_read, &output_size);
+            return zlib_helper_decompress(compress_buffer->memory, input_size, buffer, bytes_to_read, &output_size);
         }
     }
 }
 
-static int read_compressed_savegame_chunk(FILE *fp, void *buffer, int bytes_to_read, int version, memblock *compress_buffer)
+static int read_compressed_savegame_chunk(FILE *fp, void *buffer, int bytes_to_read, int version, memory_block *compress_buffer)
 {
     int read_as_zlib = version > SAVE_GAME_LAST_ZIP_COMPRESSION;
     return read_compressed_chunk(fp, buffer, bytes_to_read, read_as_zlib, compress_buffer);
 }
 
-static int write_compressed_chunk(FILE *fp, void *buffer, int bytes_to_write, memblock *compress_buffer)
+static int write_compressed_chunk(FILE *fp, void *buffer, int bytes_to_write, memory_block *compress_buffer)
 {
-    if (!core_memblock_check_size(compress_buffer, bytes_to_write)) {
+    if (!core_memory_block_fit_bytes(compress_buffer, bytes_to_write)) {
         return 0;
     }
     int output_size = 0;
-    if (zlib_helper_compress(buffer, bytes_to_write, compress_buffer->mem, COMPRESS_BUFFER_INITIAL_SIZE, &output_size)) {
+    if (zlib_helper_compress(buffer, bytes_to_write, compress_buffer->memory, COMPRESS_BUFFER_INITIAL_SIZE, &output_size)) {
         write_int32(fp, output_size);
-        fwrite(compress_buffer->mem, 1, output_size, fp);
+        fwrite(compress_buffer->memory, 1, output_size, fp);
     } else {
         // unable to compress: write uncompressed
         write_int32(fp, UNCOMPRESSED);
@@ -827,8 +827,8 @@ static int load_scenario_to_buffers(const char *filename, int *version)
     }
     *version = get_scenario_version(fp);
     init_scenario_data(*version);
-    memblock compress_buffer;
-    core_memblock_init(&compress_buffer, COMPRESS_BUFFER_INITIAL_SIZE);
+    memory_block compress_buffer;
+    core_memory_block_init(&compress_buffer, COMPRESS_BUFFER_INITIAL_SIZE);
     for (int i = 0; i < scenario_data.num_pieces; i++) {
         file_piece *piece = &scenario_data.pieces[i];
         int result = 0;
@@ -848,7 +848,7 @@ static int load_scenario_to_buffers(const char *filename, int *version)
             return 0;
         }
     }
-    core_memblock_free(&compress_buffer);
+    core_memory_block_free(&compress_buffer);
     file_close(fp);
     return 1;
 }
@@ -966,8 +966,8 @@ int game_file_io_write_scenario(const char *filename)
         log_error("Unable to save scenario", 0, 0);
         return 0;
     }
-    memblock compress_buffer;
-    core_memblock_init(&compress_buffer, COMPRESS_BUFFER_INITIAL_SIZE);
+    memory_block compress_buffer;
+    core_memory_block_init(&compress_buffer, COMPRESS_BUFFER_INITIAL_SIZE);
     uint8_t header[8];
     string_copy(string_from_ascii("VERSION"), header, sizeof(header));
     fwrite(header, 1, 8, fp);
@@ -986,13 +986,15 @@ int game_file_io_write_scenario(const char *filename)
             fwrite(piece->buf.data, 1, piece->buf.size, fp);
         }
     }
-    core_memblock_free(&compress_buffer);
+    core_memory_block_free(&compress_buffer);
     file_close(fp);
     return 1;
 }
 
-static int savegame_read_from_file(FILE *fp, int version, memblock *compress_buffer)
+static int savegame_read_from_file(FILE *fp, int version)
 {
+    memory_block compress_buffer;
+    core_memory_block_init(&compress_buffer, COMPRESS_BUFFER_INITIAL_SIZE);
     for (int i = 0; i < savegame_data.num_pieces; i++) {
         file_piece *piece = &savegame_data.pieces[i];
         int result = 0;
@@ -1000,7 +1002,7 @@ static int savegame_read_from_file(FILE *fp, int version, memblock *compress_buf
             continue;
         }
         if (piece->compressed) {
-            result = read_compressed_savegame_chunk(fp, piece->buf.data, piece->buf.size, version, compress_buffer);
+            result = read_compressed_savegame_chunk(fp, piece->buf.data, piece->buf.size, version, &compress_buffer);
         } else {
             result = fread(piece->buf.data, 1, piece->buf.size, fp) == piece->buf.size;
         }
@@ -1011,10 +1013,11 @@ static int savegame_read_from_file(FILE *fp, int version, memblock *compress_buf
             return 0;
         }
     }
+    core_memory_block_free(&compress_buffer);
     return 1;
 }
 
-static void savegame_write_to_file(FILE *fp, memblock *compress_buffer)
+static void savegame_write_to_file(FILE *fp, memory_block *compress_buffer)
 {
     for (int i = 0; i < savegame_data.num_pieces; i++) {
         file_piece *piece = &savegame_data.pieces[i];
@@ -1065,10 +1068,7 @@ int game_file_io_read_saved_game(const char *filename, int offset)
         }
         log_info("Savegame version", 0, version);
         init_savegame_data(version);
-        memblock compress_buffer;
-        core_memblock_init(&compress_buffer, COMPRESS_BUFFER_INITIAL_SIZE);
-        result = savegame_read_from_file(fp, version, &compress_buffer);
-        core_memblock_free(&compress_buffer);
+        result = savegame_read_from_file(fp, version);
     }
     file_close(fp);
     if (!result) {
@@ -1144,7 +1144,7 @@ static building *savegame_building(int id)
     return &b;
 }
 
-static int savegame_read_file_info(FILE *fp, saved_game_info *info, int version, memblock *compress_buffer)
+static int savegame_read_file_info(FILE *fp, saved_game_info *info, int version, memory_block *compress_buffer)
 {
     clear_savegame_pieces();
 
@@ -1327,10 +1327,10 @@ int game_file_io_read_saved_game_info(const char *filename, saved_game_info *inf
     int result = 0;
     int version = get_savegame_version(fp);
     if (version && version <= SAVE_GAME_CURRENT_VERSION) {
-        memblock compress_buffer;
-        core_memblock_init(&compress_buffer, COMPRESS_BUFFER_INITIAL_SIZE);
+        memory_block compress_buffer;
+        core_memory_block_init(&compress_buffer, COMPRESS_BUFFER_INITIAL_SIZE);
         result = savegame_read_file_info(fp, info, version, &compress_buffer);
-        core_memblock_free(&compress_buffer);
+        core_memory_block_free(&compress_buffer);
     }
     file_close(fp);
     return result;
@@ -1348,10 +1348,10 @@ int game_file_io_write_saved_game(const char *filename)
         log_error("Unable to save game", 0, 0);
         return 0;
     }
-    memblock compress_buffer;
-    core_memblock_init(&compress_buffer, COMPRESS_BUFFER_INITIAL_SIZE);
+    memory_block compress_buffer;
+    core_memory_block_init(&compress_buffer, COMPRESS_BUFFER_INITIAL_SIZE);
     savegame_write_to_file(fp, &compress_buffer);
-    core_memblock_free(&compress_buffer);
+    core_memory_block_free(&compress_buffer);
     file_close(fp);
     return 1;
 }
