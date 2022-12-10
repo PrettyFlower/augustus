@@ -1,6 +1,8 @@
 #ifndef CORE_MEMORY_BLOCK_H
 #define CORE_MEMORY_BLOCK_H
 
+#include <stddef.h>
+
 typedef struct {
     char *memory;
     size_t size;
