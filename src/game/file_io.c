@@ -762,7 +762,7 @@ static void write_int32(FILE *fp, int value)
 
 static int read_compressed_chunk(FILE *fp, void *buffer, int bytes_to_read, int read_as_zlib, memory_block *compress_buffer)
 {
-    if (!core_memory_block_fit_bytes(compress_buffer, bytes_to_read)) {
+    if (!core_memory_block_ensure_size(compress_buffer, bytes_to_read)) {
         return 0;
     }
     int input_size = read_int32(fp);
@@ -790,7 +790,7 @@ static int read_compressed_savegame_chunk(FILE *fp, void *buffer, int bytes_to_r
 
 static int write_compressed_chunk(FILE *fp, void *buffer, int bytes_to_write, memory_block *compress_buffer)
 {
-    if (!core_memory_block_fit_bytes(compress_buffer, bytes_to_write)) {
+    if (!core_memory_block_ensure_size(compress_buffer, bytes_to_write)) {
         return 0;
     }
     int output_size = 0;

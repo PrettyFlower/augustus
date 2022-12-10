@@ -13,7 +13,7 @@ int core_memory_block_init(memory_block *block, size_t initial_size)
     return 1;
 }
 
-int core_memory_block_fit_bytes(memory_block *block, size_t size)
+int core_memory_block_ensure_size(memory_block *block, size_t size)
 {
     if (size <= block->size) {
         return 1;

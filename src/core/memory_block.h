@@ -10,7 +10,7 @@ typedef struct {
 
 int core_memory_block_init(memory_block *block, size_t initial_size);
 
-int core_memory_block_fit_bytes(memory_block *block, size_t size);
+int core_memory_block_ensure_size(memory_block *block, size_t size);
 
 void core_memory_block_free(memory_block *block);
 
