@@ -1094,7 +1094,6 @@ static int config_change_fullscreen(config_key key)
         if (data.config_values[key].new_value) {
             setting_set_display(1, screen_width(), screen_height());
         }
-        config_change_basic(key);
     }
     return 1;
 }
@@ -1111,7 +1110,6 @@ static int config_change_display_resolution(config_key key)
             setting_set_display(0, r->width, r->height);
             setting_set_display(1, r->width, r->height);
         }
-        config_change_basic(key);
     }
     return 1;
 }
