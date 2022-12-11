@@ -70,10 +70,10 @@ static const char *ini_string_keys[] = {
     "ui_language_dir"
 };
 
-static int values[CONFIG_MAX_ENTRIES];
+static int values[CONFIG_MAX_ALL];
 static char string_values[CONFIG_STRING_MAX_ENTRIES][CONFIG_STRING_VALUE_MAX];
 
-static int default_values[CONFIG_MAX_ENTRIES] = {
+static int default_values[CONFIG_MAX_ALL] = {
     [CONFIG_GENERAL_ENABLE_AUDIO] = 1,
     [CONFIG_GENERAL_MASTER_VOLUME] = 100,
     [CONFIG_GENERAL_ENABLE_VIDEO_SOUND] = 1,
