@@ -408,7 +408,7 @@ static void xml_end_distant_battle_path(void)
     } else {
         data.success = 0;
         log_error("Invalid distant battle path type", 0, data.distant_battle_path_type);
-        return 0;
+        return;
     }
 
     int month = 1;
@@ -421,7 +421,7 @@ static void xml_end_distant_battle_path(void)
             if (data.next_empire_obj_id >= MAX_EMPIRE_OBJECTS) {
                 data.success = 0;
                 log_error("Too many objects", 0, data.next_empire_obj_id);
-                return 0;
+                return;
             }
             full_empire_object *army_obj = empire_object_get_full(data.next_empire_obj_id);
             army_obj->obj.id = data.next_empire_obj_id;
