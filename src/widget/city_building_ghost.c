@@ -1104,7 +1104,7 @@ static void draw_road(const map_tile *tile, int x, int y)
 
 static void draw_market_range(int x, int y, int grid_offset)
 {
-    image_draw(image_group(GROUP_TERRAIN_FLAT_TILE), x, y, COLOR_MASK_GREY, scale);
+    image_draw(image_group(GROUP_TERRAIN_FLAT_TILE), x, y, COLOR_MASK_GREY, data.scale);
 }
 
 static void draw_market(const map_tile *tile, int x, int y)
