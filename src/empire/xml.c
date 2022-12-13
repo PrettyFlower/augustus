@@ -44,6 +44,7 @@ static struct {
     int current_city_id;
     int current_trade_route_id;
     city_list current_city_list;
+    int has_vulnerable_city;
     int current_invasion_path_id;
     int invasion_path_ids[10];
     int invasion_path_idx;
@@ -151,6 +152,7 @@ static int xml_start_city(void)
             break;
         case EMPIRE_CITY_VULNERABLE_ROMAN:
             city_obj->obj.image_id = image_group(GROUP_EMPIRE_CITY_DISTANT_ROMAN);
+            data.has_vulnerable_city = 1;
             break;
         default:
             city_obj->obj.image_id = image_group(GROUP_EMPIRE_CITY_TRADE);
@@ -315,7 +317,11 @@ static int xml_start_battle(void)
 
 static int xml_start_distant_battle_path(void)
 {
-    if (!xml_parser_has_attribute("type")) {
+    if (!data.has_vulnerable_city) {
+        data.success = 0;
+        log_error("Must have a vulnerable city to set up distant battle paths", 0, 0);
+        return 0;
+    } else if (!xml_parser_has_attribute("type")) {
         data.success = 0;
         log_error("Unable to find type attribute on distant battle path", 0, 0);
         return 0;
@@ -329,7 +335,7 @@ static int xml_start_distant_battle_path(void)
         return 0;
     }
 
-    char *type = xml_parser_get_attribute_string("type");
+    const char *type = xml_parser_get_attribute_string("type");
     if (strcmp(type, "roman") == 0) {
         data.distant_battle_path_type = DISTANT_BATTLE_PATH_ROMAN;
     } else if (strcmp(type, "enemy") == 0) {
@@ -448,6 +454,7 @@ static void reset_data(void)
     data.current_city_id = -1;
     data.current_trade_route_id = -1;
     data.current_city_list = LIST_NONE;
+    data.has_vulnerable_city = 0;
     data.current_invasion_path_id = 0;
     memset(data.invasion_path_ids, 0, sizeof(data.invasion_path_ids));
     data.invasion_path_idx = 0;
