@@ -13,6 +13,7 @@
 #include "core/lang.h"
 #include "core/string.h"
 #include "figure/formation_legion.h"
+#include "figure/roamer_preview.h"
 #include "game/cheats.h"
 #include "game/settings.h"
 #include "game/state.h"
@@ -47,9 +48,10 @@ static struct {
     map_tile selected_tile;
     int new_start_grid_offset;
     int capture_input;
+    int routing_grid_offset;
 } data;
 
-static void set_city_clip_rectangle(void)
+void set_city_clip_rectangle(void)
 {
     int x, y, width, height;
     city_view_get_viewport(&x, &y, &width, &height);
@@ -620,19 +622,40 @@ static void handle_mouse(const mouse *m)
     }
     if (m->left.went_up) {
         build_end();
+        if (!building_construction_type()) {
+            if (config_get(CONFIG_UI_SHOW_ROAMING_PATH)) {
+                int grid_offset = tile->grid_offset;
+                int building_id = map_building_at(tile->grid_offset);
+                building *b;
+                if (building_id) {
+                    b = building_main(building_get(building_id));
+                    grid_offset = b->grid_offset;
+                }
+                if (data.routing_grid_offset != grid_offset) {
+                    data.routing_grid_offset = grid_offset;
+                    figure_roamer_preview_reset(building_id ? b->type : BUILDING_NONE);
+                    if (building_id) {
+                        figure_roamer_preview_create(b->type, b->grid_offset, b->x, b->y);
+                    }
+                }
+            }
+        }
     }
-    if (m->right.went_down && input_coords_in_city(m->x, m->y) && !building_construction_type()) {
+    if (m->right.went_down && input_coords_in_city(m->x, m->y)) {
         scroll_drag_start(0);
     }
     if (m->right.went_up) {
-        if (!building_construction_type()) {
-            int has_scrolled = scroll_drag_end();
-            if (!has_scrolled && handle_right_click_allow_building_info(tile)) {
-                window_building_info_show(tile->grid_offset);
-            }
-        } else {
+        if (scroll_drag_end()) {
+            return;
+        }
+        if (building_construction_type()) {
             building_construction_cancel();
             window_request_refresh();
+            return;
+        }
+        if (handle_right_click_allow_building_info(tile)) {
+            window_building_info_show(tile->grid_offset);
+            return;
         }
     }
 }
@@ -671,7 +694,7 @@ static void military_map_click(int legion_formation_id, const map_tile *tile)
     if (other_formation_id && other_formation_id == legion_formation_id) {
         formation_legion_return_home(m);
     } else {
-        formation_legion_move_to(m, tile->x, tile->y);
+        formation_legion_move_to(m, tile);
         sound_speech_play_file("wavs/cohort5.wav");
     }
     window_city_show();
@@ -705,17 +728,21 @@ void widget_city_handle_input_military(const mouse *m, const hotkeys *h, int leg
             data.capture_input = 0;
         }
     }
-    if (m->right.went_up || h->escape_pressed) {
+    
+    zoom_map(m, city_view_get_scale());
+
+    if ((!m->is_touch && m->left.went_down)
+        || (m->is_touch && m->left.went_up && touch_was_click(touch_get_earliest()))) {
+        military_map_click(legion_formation_id, tile);
+    }
+
+    if (m->right.went_down && input_coords_in_city(m->x, m->y)) {
+        scroll_drag_start(0);
+    }
+    if ((m->right.went_up && !scroll_drag_end()) || h->escape_pressed) {
         data.capture_input = 0;
         city_warning_clear_all();
         window_city_show();
-    } else {
-        update_city_view_coords(m->x, m->y, tile);
-        zoom_map(m, city_view_get_scale());
-        if ((!m->is_touch && m->left.went_down)
-            || (m->is_touch && m->left.went_up && touch_was_click(touch_get_earliest()))) {
-            military_map_click(legion_formation_id, tile);
-        }
     }
 }
 
@@ -767,4 +794,10 @@ void widget_city_clear_current_tile(void)
     data.selected_tile.y = -1;
     data.selected_tile.grid_offset = 0;
     data.current_tile.grid_offset = 0;
+    data.routing_grid_offset = 0;
+}
+
+void widget_city_clear_routing_grid_offset(void)
+{
+    data.routing_grid_offset = 0;    
 }

@@ -7,6 +7,10 @@ set_property(CACHE TARGET_PLATFORM PROPERTY STRINGS default vita switch android 
 string(TOLOWER ${TARGET_PLATFORM} TARGET_PLATFORM)
 
 option(DRAW_FPS "Draw FPS on the top left corner of the window." OFF)
+option(DRAW_ROUTING "Draw routing debug information." OFF)
+option(DRAW_HIGHWAY_TERRAIN "Draw highway debug information." OFF)
+option(DRAW_ROAD_NETWORK_IDS "Draw road network IDs for debugging." OFF)
+option(DRAW_TILE_COORDS "Draw tile coordinates." OFF)
 option(SYSTEM_LIBS "Use system libraries when available." ON)
 option(EMSCRIPTEN_LOAD_SDL_PORTS "Load SDL and SDL_mixer emscripten ports instead of compiling them" OFF)
 option(LINK_MPG123 "Link mpg123 statically to Julius instead of relying on a library." OFF)
@@ -58,15 +62,13 @@ endif()
 
 if (CMAKE_COMPILER_IS_GNUCC)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Werror=implicit-function-declaration")
-endif()
-
-# Fix bug in cmake that expects the resource compiler for mingw to have the toolchain prefix in the name
-if (CMAKE_VERSION VERSION_GREATER_EQUAL 3.24.0 AND MINGW)
-    set(CMAKE_RC_COMPILER "windres")
+    if(CMAKE_C_COMPILER_VERSION VERSION_GREATER 5.0)
+        set(CMAKE_C_FLAGS "-Werror=incompatible-pointer-types -Werror=int-conversion -Wstrict-prototypes ${CMAKE_C_FLAGS}")
+    endif()
 endif()
 
 set(PROJECT_VERSION_MAJOR 3)
-set(PROJECT_VERSION_MINOR 1)
+set(PROJECT_VERSION_MINOR 2)
 set(PROJECT_VERSION_PATCH 0)
 set(IS_RELEASE_VERSION FALSE)
 
@@ -151,7 +153,19 @@ if(${TARGET_PLATFORM} STREQUAL "emscripten")
 endif()
 
 if(DRAW_FPS)
-  add_definitions(-DDRAW_FPS)
+    add_definitions(-DDRAW_FPS)
+endif()
+if(DRAW_ROUTING)
+    add_definitions(-DDRAW_ROUTING)
+endif()
+if(DRAW_HIGHWAY_TERRAIN)
+    add_definitions(-DDRAW_HIGHWAY_TERRAIN)
+endif()
+if(DRAW_TILE_COORDS)
+    add_definitions(-DDRAW_TILE_COORDS)
+endif()
+if(DRAW_ROAD_NETWORK_IDS)
+    add_definitions(-DDRAW_ROAD_NETWORK_IDS)
 endif()
 
 set(ASSETS_DIR ${PROJECT_SOURCE_DIR}/res/assets)
@@ -220,6 +234,9 @@ set(PLATFORM_FILES
     ${PROJECT_SOURCE_DIR}/src/platform/virtual_keyboard.c
 )
 
+if("${CMAKE_BUILD_TYPE}" MATCHES "Debug")
+    list(APPEND PLATFORM_FILES ${PROJECT_SOURCE_DIR}/src/platform/debug.c)
+endif()
 if (${TARGET_PLATFORM} STREQUAL "vita")
     set(PLATFORM_FILES
         ${PLATFORM_FILES}
@@ -258,13 +275,16 @@ set(CORE_FILES
     ${PROJECT_SOURCE_DIR}/src/core/io.c
     ${PROJECT_SOURCE_DIR}/src/core/lang.c
     ${PROJECT_SOURCE_DIR}/src/core/locale.c
+    ${PROJECT_SOURCE_DIR}/src/core/memory_block.c
     ${PROJECT_SOURCE_DIR}/src/core/png_read.c
     ${PROJECT_SOURCE_DIR}/src/core/random.c
     ${PROJECT_SOURCE_DIR}/src/core/smacker.c
     ${PROJECT_SOURCE_DIR}/src/core/speed.c
     ${PROJECT_SOURCE_DIR}/src/core/string.c
     ${PROJECT_SOURCE_DIR}/src/core/time.c
+    ${PROJECT_SOURCE_DIR}/src/core/xml_parser.c
     ${PROJECT_SOURCE_DIR}/src/core/zip.c
+    ${PROJECT_SOURCE_DIR}/src/core/zlib_helper.c
 )
 
 set(BUILDING_FILES
@@ -347,6 +367,7 @@ set(CITY_FILES
 set(EMPIRE_FILES
     ${PROJECT_SOURCE_DIR}/src/empire/city.c
     ${PROJECT_SOURCE_DIR}/src/empire/empire.c
+    ${PROJECT_SOURCE_DIR}/src/empire/xml.c
     ${PROJECT_SOURCE_DIR}/src/empire/object.c
     ${PROJECT_SOURCE_DIR}/src/empire/trade_prices.c
     ${PROJECT_SOURCE_DIR}/src/empire/trade_route.c
@@ -366,6 +387,7 @@ set(FIGURE_FILES
     ${PROJECT_SOURCE_DIR}/src/figure/name.c
     ${PROJECT_SOURCE_DIR}/src/figure/phrase.c
     ${PROJECT_SOURCE_DIR}/src/figure/properties.c
+    ${PROJECT_SOURCE_DIR}/src/figure/roamer_preview.c
     ${PROJECT_SOURCE_DIR}/src/figure/route.c
     ${PROJECT_SOURCE_DIR}/src/figure/service.c
     ${PROJECT_SOURCE_DIR}/src/figure/sound.c
@@ -515,12 +537,14 @@ set(WIDGET_FILES
     ${PROJECT_SOURCE_DIR}/src/widget/city_bridge.c
     ${PROJECT_SOURCE_DIR}/src/widget/city_building_ghost.c
     ${PROJECT_SOURCE_DIR}/src/widget/city_figure.c
+    ${PROJECT_SOURCE_DIR}/src/widget/city_draw_highway.c
     ${PROJECT_SOURCE_DIR}/src/widget/city_overlay_education.c
     ${PROJECT_SOURCE_DIR}/src/widget/city_overlay_entertainment.c
     ${PROJECT_SOURCE_DIR}/src/widget/city_overlay_health.c
     ${PROJECT_SOURCE_DIR}/src/widget/city_overlay_other.c
     ${PROJECT_SOURCE_DIR}/src/widget/city_overlay_risks.c
     ${PROJECT_SOURCE_DIR}/src/widget/city_pause_menu.c
+    ${PROJECT_SOURCE_DIR}/src/widget/city_water_ghost.c
     ${PROJECT_SOURCE_DIR}/src/widget/city_with_overlay.c
     ${PROJECT_SOURCE_DIR}/src/widget/city_without_overlay.c
     ${PROJECT_SOURCE_DIR}/src/widget/input_box.c
@@ -780,7 +804,7 @@ if(APPLE)
 
     set_target_properties(${SHORT_NAME} PROPERTIES
         MACOSX_BUNDLE TRUE
-        MACOSX_BUNDLE_INFO_PLIST "${PROJECT_SOURCE_DIR}/res/Info.plist")
+        MACOSX_BUNDLE_INFO_PLIST "${PROJECT_SOURCE_DIR}/res/macos/Info.plist")
 
     set(DIRS "")
     set(LIBS "")
@@ -806,6 +830,15 @@ if(APPLE)
         include(BundleUtilities)
         fixup_bundle(${CMAKE_BINARY_DIR}/${PROJECT_NAME}.app \"${LIBS}\" \"${DIRS}\")
     " BUNDLE DESTINATION ${CMAKE_BINARY_DIR})
+
+    # perform ad-hoc codesigning
+	set(codesignCommand "codesign --verbose=4 --force --deep --options=runtime --timestamp=none --sign -")
+	set(codesignCommandWithEntitlements "${codesignCommand} --entitlements \"${PROJECT_SOURCE_DIR}/res/macos/Entitlements.plist\"")
+	install(CODE "
+		execute_process(COMMAND
+			${codesignCommandWithEntitlements} \"${CMAKE_BINARY_DIR}/${PROJECT_NAME}.app/Contents/MacOS/${PROJECT_NAME}\"
+		)
+	")
 endif()
 
 if(SDL2_INCLUDE_DIR)

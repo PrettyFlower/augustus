@@ -16,7 +16,6 @@ static const char *ini_keys[] = {
     "master_volume",
     "enable_audio_in_videos",
     "video_volume",
-    "ui_walker_waypoints",
     "gameplay_fix_immigration",
     "gameplay_fix_100y_ghosts",
     "screen_display_scale",
@@ -29,6 +28,7 @@ static const char *ini_keys[] = {
     "ui_visual_feedback_on_delete",
     "ui_allow_cycling_temples",
     "ui_show_water_structure_range",
+    "ui_show_water_structure_range_houses",
     "ui_show_market_range",
     "ui_show_construction_size",
     "ui_highlight_legions",
@@ -41,6 +41,7 @@ static const char *ini_keys[] = {
     "ui_show_grid",
     "ui_show_partial_grid_around_construction",
     "ui_always_show_rotation_buttons",
+    "ui_show_roaming_path",
     "gameplay_change_max_grand_temples",
     "gameplay_change_jealous_gods",
     "gameplay_change_global_labour",
@@ -63,6 +64,7 @@ static const char *ini_keys[] = {
     "gameplay_change_disable_infinite_wolves_spawning",
     "gameplay_change_romers_dont_skip_corners",
     "gameplay_change_yearly_autosave",
+    "gameplay_change_auto_kill_animals",
 };
 
 static const char *ini_string_keys[] = {

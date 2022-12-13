@@ -17,6 +17,7 @@
 #include "map/random.h"
 #include "map/terrain.h"
 #include "translation/translation.h"
+#include "widget/city_draw_highway.h"
 
 static int show_building_religion(const building *b)
 {
@@ -383,7 +384,7 @@ static int terrain_on_water_overlay(void)
     return
         TERRAIN_TREE | TERRAIN_ROCK | TERRAIN_WATER | TERRAIN_SHRUB | TERRAIN_MEADOW |
         TERRAIN_GARDEN | TERRAIN_ROAD | TERRAIN_AQUEDUCT | TERRAIN_ELEVATION |
-        TERRAIN_ACCESS_RAMP | TERRAIN_RUBBLE;
+        TERRAIN_ACCESS_RAMP | TERRAIN_RUBBLE | TERRAIN_HIGHWAY;
 }
 
 static void draw_footprint_water(int x, int y, float scale, int grid_offset)
@@ -391,17 +392,16 @@ static void draw_footprint_water(int x, int y, float scale, int grid_offset)
     if (!map_property_is_draw_tile(grid_offset)) {
         return;
     }
-    if (map_terrain_is(grid_offset, terrain_on_water_overlay())) {
-        if (map_terrain_is(grid_offset, TERRAIN_BUILDING)) {
-            city_with_overlay_draw_building_footprint(x, y, grid_offset, 0);
-        } else {
-            image_draw_isometric_footprint_from_draw_tile(map_image_at(grid_offset), x, y, 0, scale);
-        }
+    int is_building = map_terrain_is(grid_offset, TERRAIN_BUILDING);
+    if (map_terrain_is(grid_offset, TERRAIN_HIGHWAY) && !map_terrain_is(grid_offset, TERRAIN_GATEHOUSE)) {
+        city_draw_highway_footprint(x, y, scale, grid_offset);
+    } else if (map_terrain_is(grid_offset, terrain_on_water_overlay()) && !is_building) {
+        image_draw_isometric_footprint_from_draw_tile(map_image_at(grid_offset), x, y, 0, scale);
     } else if (map_terrain_is(grid_offset, TERRAIN_WALL)) {
         // display grass
         int image_id = image_group(GROUP_TERRAIN_GRASS_1) + (map_random_get(grid_offset) & 7);
         image_draw_isometric_footprint_from_draw_tile(image_id, x, y, 0, scale);
-    } else if (map_terrain_is(grid_offset, TERRAIN_BUILDING)) {
+    } else if (is_building) {
         building *b = building_get(map_building_at(grid_offset));
         int terrain = map_terrain_get(grid_offset);
         if (b->id && (b->has_well_access || (b->house_size && b->has_water_access))) {
@@ -524,7 +524,8 @@ static int terrain_on_desirability_overlay(void)
     return
         TERRAIN_TREE | TERRAIN_ROCK | TERRAIN_WATER |
         TERRAIN_SHRUB | TERRAIN_GARDEN | TERRAIN_ROAD |
-        TERRAIN_ELEVATION | TERRAIN_ACCESS_RAMP | TERRAIN_RUBBLE;
+        TERRAIN_ELEVATION | TERRAIN_ACCESS_RAMP | TERRAIN_RUBBLE |
+        TERRAIN_HIGHWAY;
 }
 
 static int get_desirability_image_offset(int desirability)
@@ -555,7 +556,9 @@ static int get_desirability_image_offset(int desirability)
 static void draw_footprint_desirability(int x, int y, float scale, int grid_offset)
 {
     color_t color_mask = map_property_is_deleted(grid_offset) ? COLOR_MASK_RED : 0;
-    if (map_terrain_is(grid_offset, terrain_on_desirability_overlay())
+    if (map_terrain_is(grid_offset, TERRAIN_HIGHWAY) && !map_terrain_is(grid_offset, TERRAIN_GATEHOUSE)) {
+        city_draw_highway_footprint(x, y, scale, grid_offset);
+    } else if (map_terrain_is(grid_offset, terrain_on_desirability_overlay())
         && !map_terrain_is(grid_offset, TERRAIN_BUILDING)) {
         // display normal tile
         if (map_property_is_draw_tile(grid_offset)) {

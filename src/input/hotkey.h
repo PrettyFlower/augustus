@@ -9,6 +9,8 @@ typedef struct {
     int enter_pressed;
     int escape_pressed;
     int f5_pressed;
+    int delete_pressed;
+    int backspace_pressed;
     // keys with specific function
     int cycle_legion;
     int decrease_game_speed;
@@ -35,6 +37,8 @@ typedef struct {
     int undo;
     int show_empire_map;
     int show_messages;
+    int mothball_toggle;
+    int storage_order;
 } hotkeys;
 
 void hotkey_install_mapping(hotkey_mapping *mappings, int num_mappings);

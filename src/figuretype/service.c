@@ -71,7 +71,7 @@ void figure_destination_priest_action(figure *f)
 {
     building *b = building_get(f->building_id);
     building *destination = building_get(f->destination_building_id);
-    f->terrain_usage = TERRAIN_USAGE_ROADS;
+    f->terrain_usage = TERRAIN_USAGE_ROADS_HIGHWAY;
     if (b->state != BUILDING_STATE_IN_USE || (b->figure_id4 != f->id && b->figure_id2 != f->id) || destination->state != BUILDING_STATE_IN_USE) {
         f->state = FIGURE_STATE_DEAD;
     }
@@ -146,7 +146,7 @@ void figure_destination_priest_action(figure *f)
             }
             break;
         case FIGURE_ACTION_215_PRIEST_GOING_TO_MESS_HALL:
-            f->terrain_usage = TERRAIN_USAGE_PREFER_ROADS;
+            f->terrain_usage = TERRAIN_USAGE_PREFER_ROADS_HIGHWAY;
             figure_movement_move_ticks(f, 1);
             if (f->direction == DIR_FIGURE_AT_DESTINATION) {
                 f->state = FIGURE_STATE_DEAD;
@@ -367,7 +367,7 @@ void figure_doctor_action(figure *f)
     }
     switch (f->action_state) {
         case FIGURE_ACTION_231_DOCTOR_GOING_TO_PLAGUE:
-            f->terrain_usage = TERRAIN_USAGE_PREFER_ROADS;
+            f->terrain_usage = TERRAIN_USAGE_PREFER_ROADS_HIGHWAY;
             figure_movement_move_ticks(f, 1);
             if (f->direction == DIR_FIGURE_AT_DESTINATION) {
                 f->action_state = FIGURE_ACTION_232_DOCTOR_AT_PLAGUE;

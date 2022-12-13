@@ -10,6 +10,7 @@ typedef struct {
     int y;
 } pixel_coordinate;
 
+void set_city_clip_rectangle(void);
 void widget_city_draw(void);
 void widget_city_draw_for_figure(int figure_id, pixel_coordinate *coord);
 
@@ -23,6 +24,8 @@ void widget_city_handle_input_military(const mouse *m, const hotkeys *h, int leg
 void widget_city_get_tooltip(tooltip_context *c);
 
 void widget_city_clear_current_tile(void);
+
+void widget_city_clear_routing_grid_offset(void);
 
 int widget_city_current_grid_offset(void);
 

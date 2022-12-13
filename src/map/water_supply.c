@@ -15,6 +15,7 @@
 #include "map/image.h"
 #include "map/property.h"
 #include "map/terrain.h"
+#include "map/tiles.h"
 #include "scenario/property.h"
 
 #include <string.h>
@@ -74,15 +75,17 @@ void map_water_supply_update_houses(void)
 
 static void set_all_aqueducts_to_no_water(void)
 {
-    int image_without_water = image_group(GROUP_BUILDING_AQUEDUCT_NO_WATER);
     int grid_offset = map_data.start_offset;
     for (int y = 0; y < map_data.height; y++, grid_offset += map_data.border_size) {
         for (int x = 0; x < map_data.width; x++, grid_offset++) {
             if (map_terrain_is(grid_offset, TERRAIN_AQUEDUCT)) {
-                map_aqueduct_set(grid_offset, 0);
+                map_aqueduct_set_water_access(grid_offset, 0);
                 int image_id = map_image_at(grid_offset);
-                if (image_id < image_without_water) {
+                if (image_id < image_group(GROUP_BUILDING_AQUEDUCT_NO_WATER)) {
                     map_image_set(grid_offset, image_id + 15);
+                } else if(map_terrain_is(grid_offset, TERRAIN_HIGHWAY)) {
+                    image_id = map_tiles_highway_get_aqueduct_image(grid_offset);
+                    map_image_set(grid_offset, image_id);
                 }
             }
         }
@@ -97,14 +100,17 @@ static void fill_aqueducts_from_offset(int grid_offset)
     memset(&queue, 0, sizeof(queue));
     int guard = 0;
     int next_offset;
-    int image_without_water = image_group(GROUP_BUILDING_AQUEDUCT_NO_WATER);
+
     do {
         if (++guard >= GRID_SIZE * GRID_SIZE) {
             break;
         }
-        map_aqueduct_set(grid_offset, 1);
+        map_aqueduct_set_water_access(grid_offset, 1);
         int image_id = map_image_at(grid_offset);
-        if (image_id >= image_without_water) {
+        if (map_terrain_is(grid_offset, TERRAIN_HIGHWAY)) {
+            image_id = map_tiles_highway_get_aqueduct_image(grid_offset);
+            map_image_set(grid_offset, image_id);
+        } else if (image_id >= image_group(GROUP_BUILDING_AQUEDUCT_NO_WATER)) {
             map_image_set(grid_offset, image_id - 15);
         }
         next_offset = -1;
@@ -120,7 +126,7 @@ static void fill_aqueducts_from_offset(int grid_offset)
                     }
                 }
             } else if (map_terrain_is(new_offset, TERRAIN_AQUEDUCT)) {
-                if (!map_aqueduct_at(new_offset)) {
+                if (!map_aqueduct_has_water_access_at(new_offset)) {
                     if (next_offset == -1) {
                         next_offset = new_offset;
                     } else {
@@ -252,7 +258,6 @@ void map_water_supply_update_reservoir_fountain(void)
             b->has_water_access = 0;
         }
     }
-
 }
 
 int map_water_supply_is_well_unnecessary(int well_id, int radius)
@@ -277,7 +282,7 @@ int map_water_supply_is_well_unnecessary(int well_id, int radius)
     return num_houses ? WELL_UNNECESSARY_FOUNTAIN : WELL_UNNECESSARY_NO_HOUSES;
 }
 
-int map_water_supply_fountain_radius()
+int map_water_supply_fountain_radius(void)
 {
     int radius = scenario_property_climate() == CLIMATE_DESERT ? FOUNTAIN_RADIUS - 1 : FOUNTAIN_RADIUS;
     if (building_monument_working(BUILDING_GRAND_TEMPLE_NEPTUNE)) {
@@ -287,7 +292,7 @@ int map_water_supply_fountain_radius()
     return radius;
 }
 
-int map_water_supply_reservoir_radius()
+int map_water_supply_reservoir_radius(void)
 {
     int radius = RESERVOIR_RADIUS;
     if (building_monument_working(BUILDING_GRAND_TEMPLE_NEPTUNE)) {
@@ -297,7 +302,7 @@ int map_water_supply_reservoir_radius()
     return radius;
 }
 
-int map_water_supply_well_radius()
+int map_water_supply_well_radius(void)
 {
     int radius = WELL_RADIUS;
     if (building_monument_working(BUILDING_GRAND_TEMPLE_NEPTUNE)) {

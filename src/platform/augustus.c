@@ -14,6 +14,9 @@
 #include "input/mouse.h"
 #include "input/touch.h"
 #include "platform/arguments.h"
+#ifndef NDEBUG
+#include "platform/debug.h"
+#endif
 #include "platform/file_manager.h"
 #include "platform/joystick.h"
 #include "platform/keyboard_input.h"
@@ -41,12 +44,6 @@
 
 #if defined(USE_TINYFILEDIALOGS) || defined(__ANDROID__)
 #define SHOW_FOLDER_SELECT_DIALOG
-#endif
-
-#ifdef DRAW_FPS
-#include "graphics/window.h"
-#include "graphics/graphics.h"
-#include "graphics/text.h"
 #endif
 
 #define INTPTR(d) (*(int*)(d))
@@ -148,53 +145,19 @@ static void platform_per_frame_callback(void)
 }
 #endif
 
+static void run_and_draw(void)
+{
 #ifdef DRAW_FPS
-static struct {
-    int frame_count;
-    int last_fps;
-    Uint32 last_update_time;
-} fps = { 0, 0, 0 };
-
-static void run_and_draw(void)
-{
-    time_millis time_before_run = SDL_GetTicks();
-    time_set_millis(time_before_run);
-
-    game_run();
-    Uint32 time_between_run_and_draw = SDL_GetTicks();
-    game_draw();
-    Uint32 time_after_draw = SDL_GetTicks();
-
-    fps.frame_count++;
-    if (time_after_draw - fps.last_update_time > 1000) {
-        fps.last_fps = fps.frame_count;
-        fps.last_update_time = time_after_draw;
-        fps.frame_count = 0;
-    }
-    if (window_is(WINDOW_CITY) || window_is(WINDOW_CITY_MILITARY) || window_is(WINDOW_SLIDING_SIDEBAR)) {
-        int y_offset = 24;
-        int y_offset_text = y_offset + 5;
-        graphics_fill_rect(0, y_offset, 100, 20, COLOR_WHITE);
-        text_draw_number(fps.last_fps,
-            'f', "", 5, y_offset_text, FONT_NORMAL_PLAIN, COLOR_FONT_RED);
-        text_draw_number(time_between_run_and_draw - time_before_run,
-            'g', "", 40, y_offset_text, FONT_NORMAL_PLAIN, COLOR_FONT_RED);
-        text_draw_number(time_after_draw - time_between_run_and_draw,
-            'd', "", 70, y_offset_text, FONT_NORMAL_PLAIN, COLOR_FONT_RED);
-    }
-    platform_renderer_render();
-}
+    debug_run_and_draw();
 #else
-static void run_and_draw(void)
-{
     time_set_millis(SDL_GetTicks());
 
     game_run();
     game_draw();
 
     platform_renderer_render();
-}
 #endif
+}
 
 static void handle_mouse_button(SDL_MouseButtonEvent *event, int is_down)
 {
@@ -290,6 +253,11 @@ static void handle_event(SDL_Event *event)
         case SDL_KEYUP:
             platform_handle_key_up(&event->key);
             break;
+#if defined(__ANDROID__) && SDL_VERSION_ATLEAST(2, 24, 0)
+        case SDL_TEXTEDITING:
+            platform_handle_editing_text(&event->edit);
+            break;
+#endif
         case SDL_TEXTINPUT:
             platform_handle_text(&event->text);
             break;
@@ -478,8 +446,8 @@ static const char *ask_for_data_dir(int again)
         if (!result) {
             return NULL;
         }
-        }
-    return tinyfd_selectFolderDialog("Please select your Caesar 3 folder", NULL);
+    }
+    return tinyfd_selectFolderDialog("Please select your Caesar 3 folder");
 #endif
     }
 #endif

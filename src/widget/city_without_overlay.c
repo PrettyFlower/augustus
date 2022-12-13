@@ -23,6 +23,7 @@
 #include "core/config.h"
 #include "core/time.h"
 #include "figure/formation_legion.h"
+#include "figure/roamer_preview.h"
 #include "game/resource.h"
 #include "graphics/graphics.h"
 #include "graphics/image.h"
@@ -35,11 +36,15 @@
 #include "map/property.h"
 #include "map/sprite.h"
 #include "map/terrain.h"
+#ifndef NDEBUG
+#include "platform/debug.h"
+#endif
 #include "scenario/property.h"
 #include "sound/city.h"
 #include "widget/city_bridge.h"
 #include "widget/city_building_ghost.h"
 #include "widget/city_figure.h"
+#include "widget/city_draw_highway.h"
 
 #define OFFSET(x,y) (x + GRID_SIZE * y)
 
@@ -116,6 +121,25 @@ static int has_adjacent_deletion(int grid_offset)
     return 0;
 }
 
+static void draw_roamer_frequency(int x, int y, int grid_offset)
+{
+    int travel_frequency = figure_roamer_preview_get_frequency(grid_offset);
+    if (travel_frequency > 0 && travel_frequency <= FIGURE_ROAMER_PREVIEW_MAX_PASSAGES) {
+        static const color_t frequency_colors[] = {
+            0x663377ff, 0x662266ee, 0x661155dd, 0x660044cc, 0x660033c4, 0x660022bb, 0x660011a4, 0x66000088
+        };
+        image_draw(image_group(GROUP_TERRAIN_FLAT_TILE), x, y,
+            frequency_colors[travel_frequency - 1], draw_context.scale);
+    } else if (travel_frequency == FIGURE_ROAMER_PREVIEW_ENTRY_TILE) {
+        image_blend_footprint_color(x, y, COLOR_MASK_RED, draw_context.scale);
+    } else if (travel_frequency == FIGURE_ROAMER_PREVIEW_EXIT_TILE) {
+        image_blend_footprint_color(x, y, COLOR_MASK_GREEN, draw_context.scale);
+    } else if (travel_frequency == FIGURE_ROAMER_PREVIEW_ENTRY_EXIT_TILE) {
+        image_draw_isometric_footprint(image_group(GROUP_TERRAIN_FLAT_TILE),
+            x, y, COLOR_MASK_FOOTPRINT_GHOST, draw_context.scale);
+    }
+}
+
 static void draw_footprint(int x, int y, int grid_offset)
 {
     sound_city_progress_ambient();
@@ -167,7 +191,11 @@ static void draw_footprint(int x, int y, int grid_offset)
         }
         map_image_set(grid_offset, image_id);
     }
-    image_draw_isometric_footprint_from_draw_tile(image_id, x, y, color_mask, draw_context.scale);
+    if (map_terrain_is(grid_offset, TERRAIN_HIGHWAY) && !map_terrain_is(grid_offset, TERRAIN_GATEHOUSE)) {
+        city_draw_highway_footprint(x, y, draw_context.scale, grid_offset);
+    } else {
+        image_draw_isometric_footprint_from_draw_tile(image_id, x, y, color_mask, draw_context.scale);
+    }
     if (!building_id && config_get(CONFIG_UI_SHOW_GRID) && draw_context.scale <= 2.0f) {
         static int grid_id = 0;
         if (!grid_id) {
@@ -175,6 +203,7 @@ static void draw_footprint(int x, int y, int grid_offset)
         }
         image_draw(grid_id, x, y, COLOR_GRID, draw_context.scale);
     }
+    draw_roamer_frequency(x, y, grid_offset);
 }
 
 static void draw_hippodrome_spectators(const building *b, int x, int y, color_t color_mask)
@@ -632,7 +661,8 @@ static void draw_elevated_figures(int x, int y, int grid_offset)
     while (figure_id > 0) {
         figure *f = figure_get(figure_id);
         if ((f->use_cross_country && !f->is_ghost && !f->dont_draw_elevated) || f->height_adjusted_ticks) {
-            city_draw_figure(f, x, y, draw_context.scale, 0);
+            int highlight = f->formation_id > 0 && f->formation_id == draw_context.highlighted_formation;
+            city_draw_figure(f, x, y, draw_context.scale, highlight);
         }
         figure_id = f->next_figure_id_on_same_tile;
     }
@@ -702,29 +732,48 @@ static void draw_connectable_construction_ghost(int x, int y, int grid_offset)
     image_draw_isometric_top_from_draw_tile(image_id, x, y, COLOR_MASK_BUILDING_GHOST, draw_context.scale);
 }
 
+static int get_highlighted_formation_id(const map_tile *tile)
+{
+    if (!config_get(CONFIG_UI_HIGHLIGHT_LEGIONS)) {
+        return 0;
+    }
+    int highlighted_formation_id = formation_legion_or_herd_at_grid_offset(tile->grid_offset);
+    if (highlighted_formation_id <= 0) {
+        return 0;
+    }
+    formation *highlighted_formation = formation_get(highlighted_formation_id);
+    if (highlighted_formation->in_distant_battle) {
+        return 0;
+    }
+    int selected_formation_id = formation_get_selected();
+    // don't highlight friendly legions if we've already selected one
+    if (selected_formation_id && highlighted_formation_id != selected_formation_id && !highlighted_formation->is_herd) {
+        return 0;
+    }
+    // don't highlight herds unless we have a formation selected
+    if (!selected_formation_id && highlighted_formation->is_herd) {
+        return 0;
+    }
+    if (config_get(CONFIG_GP_CH_AUTO_KILL_ANIMALS) && highlighted_formation->is_herd) {
+        return 0;
+    }
+    return highlighted_formation_id;
+}
+
 void city_without_overlay_draw(int selected_figure_id, pixel_coordinate *figure_coord, const map_tile *tile)
 {
-    int highlighted_formation = 0;
-    if (config_get(CONFIG_UI_HIGHLIGHT_LEGIONS)) {
-        highlighted_formation = formation_legion_at_grid_offset(tile->grid_offset);
-        if (highlighted_formation > 0) {
-            int selected_formation = formation_get_selected();
-            if (selected_formation && highlighted_formation != selected_formation) {
-                highlighted_formation = 0;
-            }
-            if (formation_get(highlighted_formation)->in_distant_battle) {
-                highlighted_formation = 0;
-            }
-        }
-    }
-    init_draw_context(selected_figure_id, figure_coord, highlighted_formation);
+    int highlighted_formation_id = get_highlighted_formation_id(tile);
+    init_draw_context(selected_figure_id, figure_coord, highlighted_formation_id);
     int x, y, width, height;
     city_view_get_viewport(&x, &y, &width, &height);
     graphics_fill_rect(x, y, width, height, COLOR_BLACK);
     int should_mark_deleting = city_building_ghost_mark_deleting(tile);
-    city_view_foreach_valid_map_tile(draw_footprint, 0, 0);
+    city_view_foreach_valid_map_tile(draw_footprint);
+#ifndef NDEBUG
+    debug_draw_city();
+#endif
     if (!should_mark_deleting) {
-        city_view_foreach_valid_map_tile(
+        city_view_foreach_valid_map_tile_row(
             draw_top,
             draw_figures,
             draw_animation
@@ -735,14 +784,14 @@ void city_without_overlay_draw(int selected_figure_id, pixel_coordinate *figure_
             }
             city_building_ghost_draw(tile);
         }
-        city_view_foreach_valid_map_tile(
+        city_view_foreach_valid_map_tile_row(
             draw_elevated_figures,
             draw_hippodrome_ornaments,
             0
         );
     } else {
-        city_view_foreach_map_tile(deletion_draw_terrain_top);
-        city_view_foreach_map_tile(deletion_draw_figures_animations);
-        city_view_foreach_map_tile(deletion_draw_remaining);
+        city_view_foreach_valid_map_tile(deletion_draw_terrain_top);
+        city_view_foreach_valid_map_tile(deletion_draw_figures_animations);
+        city_view_foreach_valid_map_tile(deletion_draw_remaining);
     }
 }

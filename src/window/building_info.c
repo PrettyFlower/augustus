@@ -12,6 +12,7 @@
 #include "core/image_group.h"
 #include "figure/figure.h"
 #include "figure/formation_legion.h"
+#include "figure/roamer_preview.h"
 #include "figure/phrase.h"
 #include "graphics/generic_button.h"
 #include "graphics/image.h"
@@ -83,6 +84,8 @@ static int get_height_id(void)
             case TERRAIN_INFO_WALL:
             case TERRAIN_INFO_GARDEN:
                 return 1;
+            case TERRAIN_INFO_HIGHWAY:
+                return 7;
             default:
                 return 5;
         }
@@ -239,36 +242,6 @@ static int center_in_city(int element_width_pixels)
     return x + margin;
 }
 
-void highlight_waypoints(building *b) // highlight the 4 routing tiles for roams from this building
-{
-    map_clear_highlights();
-    if (b->type == BUILDING_FORT || b->house_size) { // building doesn't send roamers
-        return;
-    }
-    int hx, hy, roadx, roady;
-    hx = b->x; hy = b->y - 8;
-    map_grid_bound(&hx, &hy);
-    if (map_closest_road_within_radius(hx, hy, 1, 6, &roadx, &roady)) {
-        map_highlight_set(map_grid_offset(roadx, roady));
-    }
-    hx = b->x + 8; hy = b->y;
-    map_grid_bound(&hx, &hy);
-    if (map_closest_road_within_radius(hx, hy, 1, 6, &roadx, &roady)) {
-        map_highlight_set(map_grid_offset(roadx, roady));
-    }
-    hx = b->x; hy = b->y + 8;
-    map_grid_bound(&hx, &hy);
-    if (map_closest_road_within_radius(hx, hy, 1, 6, &roadx, &roady)) {
-        map_highlight_set(map_grid_offset(roadx, roady));
-    }
-    hx = b->x - 8; hy = b->y;
-    map_grid_bound(&hx, &hy);
-    if (map_closest_road_within_radius(hx, hy, 1, 6, &roadx, &roady)) {
-        map_highlight_set(map_grid_offset(roadx, roady));
-    }
-    window_invalidate();
-}
-
 static void init(int grid_offset)
 {
     context.can_play_sound = 1;
@@ -277,8 +250,7 @@ static void init(int grid_offset)
     context.building_id = map_building_at(grid_offset);
     context.rubble_building_type = map_rubble_building_type(grid_offset);
     context.has_reservoir_pipes = map_terrain_is(grid_offset, TERRAIN_RESERVOIR_RANGE);
-    context.aqueduct_has_water = map_aqueduct_at(grid_offset)
-        && map_image_at(grid_offset) - image_group(GROUP_BUILDING_AQUEDUCT) < 15;
+    context.aqueduct_has_water = map_aqueduct_has_water_access_at(grid_offset);
 
     city_resource_determine_available();
     context.type = BUILDING_INFO_TERRAIN;
@@ -320,14 +292,14 @@ static void init(int grid_offset)
         context.terrain_type = TERRAIN_INFO_RUBBLE;
     } else if (map_terrain_is(grid_offset, TERRAIN_WALL)) {
         context.terrain_type = TERRAIN_INFO_WALL;
+    } else if (map_terrain_is(grid_offset, TERRAIN_HIGHWAY)) {
+        context.terrain_type = TERRAIN_INFO_HIGHWAY;
     } else if (!context.building_id) {
         context.terrain_type = TERRAIN_INFO_EMPTY;
     } else {
         building *b = building_get(context.building_id);
         context.type = BUILDING_INFO_BUILDING;
         context.worker_percentage = calc_percentage(b->num_workers, model_get_building(b->type)->laborers);
-        highlight_waypoints(b);
-
         switch (b->type) {
             case BUILDING_FORT_GROUND:
                 context.building_id = b->prev_part_building_id;
@@ -342,12 +314,14 @@ static void init(int grid_offset)
                 break;
             case BUILDING_BARRACKS:
                 context.barracks_soldiers_requested = formation_legion_recruits_needed();
-                context.barracks_soldiers_requested += building_barracks_has_tower_sentry_request();
+                if (building_barracks_get_unmanned_tower(b, 0)) {
+                    context.barracks_soldiers_requested++;
+                }
                 break;
             default:
                 if (b->house_size) {
-                    context.worst_desirability_building_id = building_house_determine_worst_desirability_building(b);
-                    building_house_determine_evolve_text(b, context.worst_desirability_building_id);
+                    context.worst_desirability_building_type = building_house_determine_worst_desirability_building_type(b);
+                    building_house_determine_evolve_text(b, context.worst_desirability_building_type);
                 }
                 break;
         }
@@ -405,6 +379,8 @@ static void init(int grid_offset)
                 }
                 break;
         }
+        figure_roamer_preview_reset(b->type);
+        figure_roamer_preview_create(b->type, b->grid_offset, b->x, b->y);
     }
     // figures
     context.figure.selected_index = 0;

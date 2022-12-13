@@ -27,11 +27,16 @@ typedef enum {
     IMAGE_FULL_REFERENCE = 2
 } image_reference_type;
 
-static void load_image_layers(asset_image *img, color_t **main_images, int *main_image_widths)
+static int load_image_layers(asset_image *img, color_t **main_images, int *main_image_widths)
 {
+    int has_alpha_mask = 0;
     for (layer *l = img->last_layer; l; l = l->prev) {
+        if (l->mask == LAYER_MASK_ALPHA) {
+            has_alpha_mask = 1;
+        }
         layer_load(l, main_images, main_image_widths);
     }
+    return has_alpha_mask;
 }
 
 static void unload_image_layers(asset_image *img)
@@ -52,7 +57,7 @@ static image_reference_type get_image_reference_type(const asset_image *img)
         return IMAGE_ORIGINAL;
     }
     const layer *l = img->last_layer;
-    if (l->invert != INVERT_NONE || l->rotate != ROTATE_NONE || l->part != PART_BOTH || l->grayscale) {
+    if (l->invert != INVERT_NONE || l->rotate != ROTATE_NONE || l->part != PART_BOTH || l->mask != LAYER_MASK_NONE) {
         return IMAGE_ORIGINAL;
     }
     int reference = img->img.width == l->width && img->img.height == l->height && l->x_offset == 0 && l->y_offset == 0 ?
@@ -210,7 +215,7 @@ static int load_image(asset_image *img, color_t **main_images, int *main_image_w
             return 1;
         }
     }
-    load_image_layers(img, main_images, main_image_widths);
+    int has_alpha_mask = load_image_layers(img, main_images, main_image_widths);
 
     color_t *data = malloc(img->img.width * img->img.height * sizeof(color_t));
     if (!data) {
@@ -220,7 +225,10 @@ static int load_image(asset_image *img, color_t **main_images, int *main_image_w
     }
     memset(data, 0, img->img.width * img->img.height * sizeof(color_t));
 
-    for (const layer *l = img->last_layer; l; l = l->prev) {
+    // Images with an alpha mask layer need to be loaded from first to last, which is slower
+    const layer *l = has_alpha_mask ? &img->first_layer : img->last_layer;
+
+    while (l) {
         int image_start_x, image_start_y, image_valid_width, image_valid_height, layer_step_x;
 
         if (l->rotate == ROTATE_NONE || l->rotate == ROTATE_180_DEGREES) {
@@ -257,7 +265,7 @@ static int load_image(asset_image *img, color_t **main_images, int *main_image_w
                 layer_step_x = -layer_step_x;
             }
         }
-       
+
         for (int y = image_start_y; y < image_valid_height; y++) {
             color_t *pixel = &data[y * img->img.width + image_start_x];
             const color_t *layer_pixel = 0;
@@ -269,13 +277,32 @@ static int load_image(asset_image *img, color_t **main_images, int *main_image_w
                     layer_pixel = layer_get_color_for_image_position(l, x, y);
                 }
                 color_t image_pixel_alpha = *pixel & COLOR_CHANNEL_ALPHA;
-                color_t layer_pixel_alpha = *layer_pixel & COLOR_CHANNEL_ALPHA;
-                if (image_pixel_alpha == ALPHA_OPAQUE || layer_pixel_alpha == ALPHA_TRANSPARENT) {
+                if (l->mask == LAYER_MASK_ALPHA) {
+                    // Since the alpha mask should be grayscale, we use the blue color as the mask value
+                    color_t alpha_mask = (*layer_pixel & COLOR_CHANNEL_BLUE) << COLOR_BITSHIFT_ALPHA;
+                    if (alpha_mask == ALPHA_TRANSPARENT || image_pixel_alpha == ALPHA_TRANSPARENT) {
+                        *pixel = ALPHA_TRANSPARENT;
+                    } else if (alpha_mask != ALPHA_OPAQUE) {
+                        if (image_pixel_alpha != ALPHA_OPAQUE) {
+                            color_t alpha_src = image_pixel_alpha >> COLOR_BITSHIFT_ALPHA;
+                            color_t alpha_dst = alpha_mask >> COLOR_BITSHIFT_ALPHA;
+                            alpha_mask = COLOR_MIX_ALPHA(alpha_src, alpha_dst) << COLOR_BITSHIFT_ALPHA;
+                        }
+                        color_t result = *pixel | ALPHA_OPAQUE;
+                        result &= alpha_mask & COLOR_WHITE;
+                        *pixel = result;
+                    }
                     pixel++;
                     layer_pixel += layer_step_x;
                     continue;
                 }
-                if (image_pixel_alpha == ALPHA_TRANSPARENT) {
+                color_t layer_pixel_alpha = *layer_pixel & COLOR_CHANNEL_ALPHA;
+                if ((image_pixel_alpha == ALPHA_OPAQUE && !has_alpha_mask) || layer_pixel_alpha == ALPHA_TRANSPARENT) {
+                    pixel++;
+                    layer_pixel += layer_step_x;
+                    continue;
+                }
+                if (image_pixel_alpha == ALPHA_TRANSPARENT || (layer_pixel_alpha == ALPHA_OPAQUE && has_alpha_mask)) {
                     *pixel = *layer_pixel;
                 } else if (layer_pixel_alpha == ALPHA_OPAQUE) {
                     color_t alpha = image_pixel_alpha >> COLOR_BITSHIFT_ALPHA;
@@ -290,6 +317,7 @@ static int load_image(asset_image *img, color_t **main_images, int *main_image_w
                 layer_pixel += layer_step_x;
             }
         }
+        l = has_alpha_mask ? l->next : l->prev;
     }
 
     // The top and footprint parts of the image need to be split
@@ -368,7 +396,7 @@ void asset_image_count_isometric(void)
 int asset_image_add_layer(asset_image *img,
     const char *path, const char *group_id, const char *image_id,
     int src_x, int src_y, int offset_x, int offset_y, int width, int height,
-    layer_invert_type invert, layer_rotate_type rotate, layer_isometric_part part, int grayscale)
+    layer_invert_type invert, layer_rotate_type rotate, layer_isometric_part part, layer_mask mask)
 {
     layer *current_layer = create_layer_for_image(img);
 
@@ -378,7 +406,7 @@ int asset_image_add_layer(asset_image *img,
     current_layer->invert = invert;
     current_layer->rotate = rotate;
     current_layer->part = part;
-    current_layer->grayscale = grayscale;
+    current_layer->mask = mask;
 
     int result;
 
@@ -405,11 +433,9 @@ int asset_image_add_layer(asset_image *img,
             img->img.height = current_layer->width;
         }
     }
-#ifdef BUILDING_ASSET_PACKER
     if (img->last_layer != current_layer) {
         img->last_layer->next = current_layer;
     }
-#endif
     img->last_layer = current_layer;
     return 1;
 }

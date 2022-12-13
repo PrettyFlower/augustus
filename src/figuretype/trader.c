@@ -450,7 +450,7 @@ static void go_to_next_storage(figure *f)
     }
 }
 
-static int trader_image_id()
+static int trader_image_id(void)
 {
     if (scenario_property_climate() == CLIMATE_DESERT) {
         return IMAGE_CAMEL;
@@ -464,7 +464,7 @@ void figure_trade_caravan_action(figure *f)
     int move_speed = trader_bonus_speed();
 
     f->is_ghost = 0;
-    f->terrain_usage = TERRAIN_USAGE_PREFER_ROADS;
+    f->terrain_usage = TERRAIN_USAGE_PREFER_ROADS_HIGHWAY;
     figure_image_increase_offset(f, 12);
     f->cart_image_id = 0;
     switch (f->action_state) {
@@ -566,7 +566,7 @@ void figure_trade_caravan_donkey_action(figure *f)
     int move_speed = trader_bonus_speed();
 
     f->is_ghost = 0;
-    f->terrain_usage = TERRAIN_USAGE_PREFER_ROADS;
+    f->terrain_usage = TERRAIN_USAGE_PREFER_ROADS_HIGHWAY;
     figure_image_increase_offset(f, 12);
     f->cart_image_id = 0;
 
@@ -961,7 +961,7 @@ void figure_trade_ship_action(figure *f)
     f->image_id = image_group(GROUP_FIGURE_SHIP) + dir;
 }
 
-int figure_trade_land_trade_units()
+int figure_trade_land_trade_units(void)
 {
     int unit = 8;
 
@@ -998,7 +998,7 @@ int figure_trade_land_trade_units()
     return unit;
 }
 
-int figure_trade_sea_trade_units()
+int figure_trade_sea_trade_units(void)
 {
     int unit = 12;
     if (building_monument_working(BUILDING_GRAND_TEMPLE_MERCURY)) {

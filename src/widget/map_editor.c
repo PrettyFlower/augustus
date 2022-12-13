@@ -106,13 +106,6 @@ static void draw_flags(int x, int y, int grid_offset)
     }
 }
 
-static void set_city_clip_rectangle(void)
-{
-    int x, y, width, height;
-    city_view_get_viewport(&x, &y, &width, &height);
-    graphics_set_clip_rectangle(x, y, width, height);
-}
-
 static void display_zoom_warning(int zoom)
 {
     static uint8_t zoom_string[100];
@@ -150,7 +143,7 @@ void widget_map_editor_draw(void)
     city_view_get_viewport(&x, &y, &width, &height);
     graphics_fill_rect(x, y, width, height, COLOR_BLACK);
     city_view_foreach_map_tile(draw_footprint);
-    city_view_foreach_valid_map_tile(draw_flags, draw_top, 0);
+    city_view_foreach_valid_map_tile_row(draw_flags, draw_top, 0);
     map_editor_tool_draw(&data.current_tile);
     graphics_reset_clip_rectangle();
 }

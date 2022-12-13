@@ -75,8 +75,9 @@ static void load_layer_from_another_image(layer *l, color_t **main_data, int *ma
                 break;
             }
         }
-        if (!l->grayscale && asset_img && asset_img->img.width == l->width && asset_img->img.height == l->height &&
-            l->x_offset == 0 && l->y_offset == 0 && type != ATLAS_EXTERNAL && !asset_img->img.is_isometric) {
+        if (l->mask == LAYER_MASK_NONE && asset_img && asset_img->img.width == l->width &&
+            asset_img->img.height == l->height && l->x_offset == 0 && l->y_offset == 0 && type != ATLAS_EXTERNAL &&
+            !asset_img->img.is_isometric) {
             l->data = asset_img->data;
             return;
         }
@@ -203,7 +204,7 @@ static void load_layer_from_another_image(layer *l, color_t **main_data, int *ma
     }
     l->calculated_image_id = 0;
 
-    if (l->grayscale) {
+    if (l->mask == LAYER_MASK_GRAYSCALE) {
         convert_layer_to_grayscale(data, l->width, l->height);
     }
 
@@ -240,7 +241,7 @@ void layer_load(layer *l, color_t **main_data, int *main_image_widths)
         return;
     }
 #ifndef BUILDING_ASSET_PACKER
-    if (l->grayscale) {
+    if (l->mask == LAYER_MASK_GRAYSCALE) {
         convert_layer_to_grayscale(data, l->width, l->height);
     }
 #endif
@@ -307,10 +308,18 @@ int layer_add_from_image_path(layer *l, const char *path,
         snprintf(l->asset_image_path, FILE_NAME_MAX, "%s.png", group_get_current()->name);
     }
 #ifndef BUILDING_ASSET_PACKER
-    if ((!l->width || !l->height) && !png_get_image_size(l->asset_image_path, &l->width, &l->height)) {
-        log_info("Unable to load image", path, 0);
-        layer_unload(l);
-        return 0;
+    if (!l->width || !l->height) {
+        if (!png_get_image_size(l->asset_image_path, &width, &height)) {
+            log_info("Unable to load image", path, 0);
+            layer_unload(l);
+            return 0;
+        }
+        if (!l->width) {
+            l->width = width;
+        }
+        if (!l->height) {
+            l->height = height;
+        }
     }
 #endif
     l->x_offset = offset_x;
@@ -367,6 +376,11 @@ int layer_add_from_image_id(layer *l, const char *group_id, const char *image_id
 #else
     const image *original_image = 0;
     if (strcmp(group_id, "this") == 0) {
+        if (!image_id) {
+            log_error("No image ID provided for the current layer", 0, 0);
+            layer_unload(l);
+            return 0;
+        }
         const image_groups *group = group_get_current();
         const asset_image *image = asset_image_get_from_id(group->first_image_index);
         while (image && image->index <= group->last_image_index) {
@@ -383,9 +397,9 @@ int layer_add_from_image_id(layer *l, const char *group_id, const char *image_id
             return 0;
         }
     } else {
-        int group = string_to_int(string_from_ascii(group_id));
+        int group = atoi(group_id);
         if (group >= 0 && group < IMAGE_MAX_GROUPS) {
-            int id = image_id ? string_to_int(string_from_ascii(image_id)) : 0;
+            int id = image_id ? atoi(image_id) : 0;
             l->calculated_image_id = image_group(group) + id;
         } else {
             log_info("Image group is out of range", group_id, 0);

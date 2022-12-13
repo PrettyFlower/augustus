@@ -8,6 +8,8 @@
 #include "core/lang.h"
 #include "core/string.h"
 #include "core/time.h"
+#include "editor/empire.h"
+#include "empire/xml.h"
 #include "game/file.h"
 #include "game/file_editor.h"
 #include "game/file_io.h"
@@ -22,6 +24,7 @@
 #include "graphics/window.h"
 #include "input/input.h"
 #include "platform/file_manager.h"
+#include "scenario/editor.h"
 #include "translation/translation.h"
 #include "widget/input_box.h"
 #include "window/city.h"
@@ -71,7 +74,7 @@ static generic_button file_buttons[] = {
 static scrollbar_type scrollbar = { 304, 80, 350, 256, NUM_FILES_IN_VIEW, on_scroll, 1 };
 
 typedef struct {
-    char extension[4];
+    char extension[5];
     char last_loaded_file[FILE_NAME_MAX];
 } file_type_data;
 
@@ -104,6 +107,8 @@ static input_box file_name_input = { 16, 40, 38, 2, FONT_NORMAL_WHITE, 0, data.t
 static file_type_data saved_game_data = { "sav" };
 static file_type_data saved_game_data_expanded = { "svx" };
 static file_type_data scenario_data = { "map" };
+static file_type_data scenario_data_expanded = { "mapx" };
+static file_type_data empire_data = { "xml" };
 
 static int find_first_file_with_prefix(const char *prefix)
 {
@@ -145,7 +150,13 @@ static void scroll_to_typed_text(void)
 static void init(file_type type, file_dialog_type dialog_type)
 {
     data.type = type;
-    data.file_data = type == FILE_TYPE_SCENARIO ? &scenario_data : &saved_game_data;
+    if (type == FILE_TYPE_SCENARIO) {
+        data.file_data = &scenario_data;
+    } else if (type == FILE_TYPE_EMPIRE) {
+        data.file_data = &empire_data;
+    } else {
+        data.file_data = &saved_game_data;
+    }
     data.dialog_type = dialog_type;
 
     data.message_not_exist_start_time = 0;
@@ -162,6 +173,8 @@ static void init(file_type type, file_dialog_type dialog_type)
         string_copy(lang_get_string(9, type == FILE_TYPE_SCENARIO ? 7 : 6), data.typed_name, FILE_NAME_MAX);
         if (type == FILE_TYPE_SAVED_GAME) {
             file_append_extension((char *) data.typed_name, saved_game_data_expanded.extension);
+        } else if (type == FILE_TYPE_SCENARIO) {
+            file_append_extension((char *)data.typed_name, scenario_data_expanded.extension);
         }
         encoding_to_utf8(data.typed_name, data.file_data->last_loaded_file, FILE_NAME_MAX, 0);
     } else {
@@ -173,13 +186,16 @@ static void init(file_type type, file_dialog_type dialog_type)
     if (data.dialog_type != FILE_DIALOG_SAVE) {
         if (type == FILE_TYPE_SCENARIO) {
             data.file_list = dir_find_files_with_extension(".", scenario_data.extension);
+            data.file_list = dir_append_files_with_extension(scenario_data_expanded.extension);
+        } else if (type == FILE_TYPE_EMPIRE) {
+            data.file_list = dir_find_files_with_extension("custom_empires", empire_data.extension);
         } else {
             data.file_list = dir_find_files_with_extension(".", data.file_data->extension);
             data.file_list = dir_append_files_with_extension(saved_game_data_expanded.extension);
         }
     } else {
         if (type == FILE_TYPE_SCENARIO) {
-            data.file_list = dir_find_files_with_extension(".", scenario_data.extension);
+            data.file_list = dir_find_files_with_extension(".", scenario_data_expanded.extension);
         } else {
             data.file_list = dir_find_files_with_extension(".", saved_game_data_expanded.extension);
         }
@@ -187,7 +203,7 @@ static void init(file_type type, file_dialog_type dialog_type)
     scrollbar_init(&scrollbar, 0, data.file_list->num_files);
     scroll_to_typed_text();
 
-    strncpy(data.selected_file, data.file_data->last_loaded_file, FILE_NAME_MAX);
+    strncpy(data.selected_file, data.file_data->last_loaded_file, FILE_NAME_MAX - 1);
     input_box_start(&file_name_input);
 }
 
@@ -246,6 +262,8 @@ static void draw_foreground(void)
             lang_text_draw_centered(43, 2, 32, 10, 554, FONT_LARGE_BLACK);
         } else if (data.dialog_type == FILE_DIALOG_DELETE) {
             lang_text_draw_centered(43, 6, 32, 10, 554, FONT_LARGE_BLACK);
+        } else if (data.type == FILE_TYPE_EMPIRE) {
+            lang_text_draw_centered(CUSTOM_TRANSLATION, TR_EDITOR_CUSTOM_EMPIRE_TITLE, 32, 10, 554, FONT_LARGE_BLACK);
         } else {
             int text_id = data.dialog_type + (data.type == FILE_TYPE_SCENARIO ? 3 : 0);
             lang_text_draw_centered(43, text_id, 32, 10, 554, FONT_LARGE_BLACK);
@@ -263,7 +281,7 @@ static void draw_foreground(void)
         }
 
         // Saved game info
-        if (*data.selected_file) {
+        if (*data.selected_file && data.type != FILE_TYPE_EMPIRE) {
             if (data.has_valid_info) {
                 if (data.type == FILE_TYPE_SAVED_GAME) {
                     draw_mission_info(362, 356, 246);
@@ -374,7 +392,13 @@ static void button_ok_cancel(int is_ok, int param2)
         return;
     }
 
-    char *filename = get_chosen_filename();
+    char *chosen_filename = get_chosen_filename();
+    char filename[FILE_NAME_MAX];
+    memset(filename, 0, sizeof(filename));
+    if (data.type == FILE_TYPE_EMPIRE) {
+        strncpy(filename, "custom_empires/", FILE_NAME_MAX - 1);
+    }
+    strncat(filename, chosen_filename, FILE_NAME_MAX - 1);
 
     if (data.dialog_type != FILE_DIALOG_SAVE && !file_exists(filename, NOT_LOCALIZED)) {
         data.message_not_exist_start_time = time_get_millis();
@@ -402,6 +426,15 @@ static void button_ok_cancel(int is_ok, int param2)
                 data.message_not_exist_start_time = time_get_millis();
                 return;
             }
+        } else if (data.type == FILE_TYPE_EMPIRE) {
+            int result = empire_xml_parse_file(filename);
+            if (result) {
+                scenario_editor_set_custom_empire(filename);
+                window_editor_empire_show();
+            } else {
+                window_plain_message_dialog_show(TR_EDITOR_UNABLE_TO_LOAD_EMPIRE_TITLE, TR_EDITOR_UNABLE_TO_LOAD_EMPIRE_MESSAGE, 1);
+                return;
+            }
         }
     } else if (data.dialog_type == FILE_DIALOG_SAVE) {
         input_box_stop(&file_name_input);
@@ -416,8 +449,8 @@ static void button_ok_cancel(int is_ok, int param2)
             }
             window_city_show();
         } else if (data.type == FILE_TYPE_SCENARIO) {
-            if (!file_has_extension(filename, scenario_data.extension)) {
-                file_append_extension(filename, scenario_data.extension);
+            if (!file_has_extension(filename, scenario_data_expanded.extension)) {
+                file_append_extension(filename, scenario_data_expanded.extension);
             }
             game_file_editor_write_scenario(filename);
             window_editor_map_show();
@@ -437,7 +470,7 @@ static void button_ok_cancel(int is_ok, int param2)
         }
     }
 
-    strncpy(data.file_data->last_loaded_file, filename, FILE_NAME_MAX - 1);
+    strncpy(data.file_data->last_loaded_file, chosen_filename, FILE_NAME_MAX - 1);
 }
 
 static void on_scroll(void)
