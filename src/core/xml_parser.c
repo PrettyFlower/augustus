@@ -1,6 +1,7 @@
 #include "xml_parser.h"
 
 #include "core/log.h"
+#include "game/resource.h"
 
 #include "expat.h"
 
