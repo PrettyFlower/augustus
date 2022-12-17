@@ -226,7 +226,7 @@ static int xml_start_resource(void)
         log_error("Unable to find resource type attribute", 0, 0);
         return 0;
     }
-    resource_type resource = xml_parser_get_attribute_enum("type", resource_type_names, 15, RESOURCE_WHEAT);
+    resource_type resource = xml_parser_get_resource("type");
     if (resource == RESOURCE_NONE) {
         data.success = 0;
         log_error("Unable to determine resource type", xml_parser_get_attribute_string("type"), 0);

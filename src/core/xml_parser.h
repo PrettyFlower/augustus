@@ -1,6 +1,8 @@
 #ifndef CORE_XML_PARSER_H
 #define CORE_XML_PARSER_H
 
+#include "game/resource.h"
+
 #define XML_PARSER_MAX_ATTRIBUTES 13
 #define XML_PARSER_TAG_MAX_LENGTH 12
 
@@ -96,6 +98,8 @@ int xml_parser_get_attribute_bool(const char *key);
  * @return If a value is found, it returns "value index + start_offset". Otherwise it returns "start_offset - 1". 
  */
 int xml_parser_get_attribute_enum(const char *key, const char **values, int total_values, int start_offset);
+
+resource_type xml_parser_get_resource(const char *key);
 
 /**
  * @brief Resets the parser, allowing it to be used with another file that has the same element structure.
