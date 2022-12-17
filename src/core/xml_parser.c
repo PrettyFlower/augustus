@@ -1,7 +1,6 @@
 #include "xml_parser.h"
 
 #include "core/log.h"
-#include "game/resource.h"
 
 #include "expat.h"
 
@@ -31,7 +30,7 @@ static int dummy_element_on_enter(void)
 static void dummy_element_on_exit(void)
 {}
 
-static int compare_multiple(const char *string, const char *match)
+int xml_parser_compare_multiple(const char *string, const char *match)
 {
     const char *next;
     do {
@@ -53,7 +52,7 @@ static int is_proper_child(const xml_parser_element *element)
     if (element->parent_names == 0) {
         return 0;
     }
-    return compare_multiple(element->parent_names, data.current_element->name);
+    return xml_parser_compare_multiple(element->parent_names, data.current_element->name);
 }
 
 static const xml_parser_element *get_element_from_name(const char *name)
@@ -255,26 +254,11 @@ int xml_parser_get_attribute_enum(const char *key,
         return start_offset - 1;
     }
     for (int i = 0; i < total_values; i++) {
-        if (values[i] && compare_multiple(values[i], value)) {
+        if (values[i] && xml_parser_compare_multiple(values[i], value)) {
             return i + start_offset;
         }
     }
     return start_offset - 1;
-}
-
-resource_type xml_parser_get_resource(const char *key)
-{
-    const char *value = get_attribute_value(key);
-    if (!value) {
-        return RESOURCE_NONE;
-    }
-    for (resource_type i = RESOURCE_MIN; i < RESOURCE_MAX; i++) {
-        const char *resource_name = resource_get_data(i)->xml_attr_name;
-        if (resource_name != NULL && compare_multiple(resource_name, value)) {
-            return i;
-        }
-    }
-    return RESOURCE_NONE;
 }
 
 void xml_parser_reset(void)
