@@ -267,7 +267,7 @@ resource_type xml_parser_get_resource(const char *key)
     if (!value) {
         return RESOURCE_NONE;
     }
-    for (int i = RESOURCE_MIN; i < RESOURCE_MAX; i++) {
+    for (resource_type i = RESOURCE_MIN; i < RESOURCE_MAX; i++) {
         const uint8_t *resource_name = resource_get_data(i)->xml_attr_name;
         if (resource_name != NULL && compare_multiple(resource_name, value)) {
             return i;
