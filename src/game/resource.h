@@ -74,7 +74,7 @@ typedef struct {
     resource_type type;
     resource_flags flags;
     const uint8_t *text;
-    const uint8_t *xml_attr_name;
+    const char *xml_attr_name;
     int is_inventory;
     building_type industry;
     building_type workshop;
