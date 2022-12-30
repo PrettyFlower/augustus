@@ -13,10 +13,10 @@
 
 static int highway_wall_direction_offsets[4] = { 1, -GRID_SIZE, -1, GRID_SIZE };
 
-static int has_adjacent_road(int adjacent_grid_offset, int d)
+static int has_adjacent_road(int adjacent_grid_offset, int direction_index)
 {
-    int right_direction = highway_wall_direction_offsets[(d + 3) % 4];
-    int left_direction = highway_wall_direction_offsets[(d + 1) % 4];
+    int right_direction = highway_wall_direction_offsets[(direction_index + 3) % 4];
+    int left_direction = highway_wall_direction_offsets[(direction_index + 1) % 4];
     int left_has_road = map_terrain_is(adjacent_grid_offset + left_direction, TERRAIN_ROAD);
     int right_has_road = map_terrain_is(adjacent_grid_offset + right_direction, TERRAIN_ROAD);
     if (left_has_road && right_has_road) {
@@ -29,12 +29,12 @@ static int has_adjacent_road(int adjacent_grid_offset, int d)
     return 0;
 }
 
-static int is_highway_access(int grid_offset, int d)
+static int is_highway_access(int grid_offset, int direction_index)
 {
     if (map_terrain_is(grid_offset, TERRAIN_HIGHWAY | TERRAIN_GATEHOUSE | TERRAIN_ACCESS_RAMP)) {
         return 1;
     }
-    if (map_terrain_is(grid_offset, TERRAIN_ROAD) && !has_adjacent_road(grid_offset, d)) {
+    if (map_terrain_is(grid_offset, TERRAIN_ROAD) && !has_adjacent_road(grid_offset, direction_index)) {
         return 1;
     }
     if (map_terrain_is(grid_offset, TERRAIN_BUILDING)) {
