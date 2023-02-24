@@ -183,6 +183,8 @@ static int is_aqueduct(int x, int y, int check_routing)
         return 0;
     } else if (map_terrain_is(grid_offset, TERRAIN_AQUEDUCT)) {
         return 1;
+    } else if (building_get(map_building_at(grid_offset))->type == BUILDING_RESERVOIR) {
+        return 1;
     } else if (check_routing && map_routing_distance(grid_offset) > 0) {
         return 1;
     }
