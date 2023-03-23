@@ -1001,6 +1001,9 @@ static void set_water_image(int x, int y, int grid_offset)
     if ((map_terrain_get(grid_offset) & (TERRAIN_WATER | TERRAIN_BUILDING)) == TERRAIN_WATER) {
         const terrain_image *img = map_image_context_get_shore(grid_offset);
         int image_id = image_group(GROUP_TERRAIN_WATER) + img->group_offset + img->item_offset;
+        if (img->group_offset == 0) {
+            image_id = assets_lookup_image_id(ASSET_WATER_START) + img->item_offset;
+        }
         if (map_terrain_exists_tile_in_radius_with_type(x, y, 1, 2, TERRAIN_BUILDING)) {
             // fortified shore
             int base = image_group(GROUP_TERRAIN_WATER_SHORE);

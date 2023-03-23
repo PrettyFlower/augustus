@@ -34,6 +34,7 @@
 #include "map/grid.h"
 #include "map/image.h"
 #include "map/property.h"
+#include "map/random.h"
 #include "map/sprite.h"
 #include "map/terrain.h"
 #ifndef NDEBUG
@@ -88,8 +89,8 @@ static void init_draw_context(int selected_figure_id, pixel_coordinate *figure_c
             draw_context.advance_water_animation = 1;
         }
     }
-    draw_context.image_id_water_first = image_group(GROUP_TERRAIN_WATER);
-    draw_context.image_id_water_last = 5 + draw_context.image_id_water_first;
+    draw_context.image_id_water_first = assets_lookup_image_id(ASSET_WATER_START);
+    draw_context.image_id_water_last = 15 + draw_context.image_id_water_first;
     draw_context.selected_figure_id = selected_figure_id;
     draw_context.selected_figure_coord = figure_coord;
     draw_context.highlighted_formation = highlighted_formation;
@@ -182,9 +183,8 @@ static void draw_footprint(int x, int y, int grid_offset)
         //  !building_is_connectable(building_construction_type())) {
         image_id = image_group(GROUP_TERRAIN_OVERLAY);
     }
-    if (draw_context.advance_water_animation &&
-        image_id >= draw_context.image_id_water_first &&
-        image_id <= draw_context.image_id_water_last) {
+    int is_water_tile = image_id >= draw_context.image_id_water_first && image_id <= draw_context.image_id_water_last;
+    if (draw_context.advance_water_animation && is_water_tile) {
         image_id++;
         if (image_id > draw_context.image_id_water_last) {
             image_id = draw_context.image_id_water_first;
@@ -193,6 +193,10 @@ static void draw_footprint(int x, int y, int grid_offset)
     }
     if (map_terrain_is(grid_offset, TERRAIN_HIGHWAY) && !map_terrain_is(grid_offset, TERRAIN_GATEHOUSE)) {
         city_draw_highway_footprint(x, y, draw_context.scale, grid_offset);
+    } else if (is_water_tile) {
+        int variance_offset = (map_random_get(grid_offset) & 15) * 16;
+        int water_image_id = image_id + variance_offset;
+        image_draw_isometric_footprint_from_draw_tile(water_image_id, x, y, color_mask, draw_context.scale);
     } else {
         image_draw_isometric_footprint_from_draw_tile(image_id, x, y, color_mask, draw_context.scale);
     }
