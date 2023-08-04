@@ -1,5 +1,7 @@
 #include "generic_button.h"
 
+#include "graphics/lang_text.h"
+
 static int get_button(const mouse *m, int x, int y, generic_button *buttons, int num_buttons)
 {
     for (int i = 0; i < num_buttons; i++) {
@@ -24,6 +26,17 @@ static int get_button_min(const mouse* m, int x, int y, generic_button* buttons,
         }
     }
     return 0;
+}
+
+void generic_button_border_draw(const generic_button *button, int has_focus)
+{
+    button_border_draw(button->x, button->y, button->width, button->height, has_focus);
+}
+
+void generic_button_draw_text_centered(int group, int number, const generic_button *button, font_t font)
+{
+    int y = button->y + button->height / 2 - 5;
+    lang_text_draw_centered(group, number, button->x, y, button->width, FONT_NORMAL_BLACK);
 }
 
 int generic_buttons_handle_mouse(const mouse *m, int x, int y, generic_button *buttons, int num_buttons, int *focus_button_id)
