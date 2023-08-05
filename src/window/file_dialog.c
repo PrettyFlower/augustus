@@ -133,11 +133,9 @@ static input_box main_input = {
     .width_blocks = 18,
     .height_blocks = 2,
     .font = FONT_NORMAL_WHITE,
-    .allow_punctuation = 0,
     .text = data.filter_text,
     .text_length = FILTER_TEXT_SIZE,
     .put_clear_button_outside_box = 1,
-    .placeholder = 0,
     .on_change = input_box_changed
 };
 
@@ -372,7 +370,15 @@ static void draw_foreground(void)
 
         // Sorting text
         int sort_translation = TR_SAVE_DIALOG_SORTING_BY_NAME + data.sort_type;
-        generic_button_draw_text_centered(CUSTOM_TRANSLATION, sort_translation, &sort_by_button[0], FONT_NORMAL_BLACK);
+        int sort_button_text_y = sort_by_button[0].y + sort_by_button[0].height / 2 - 5;
+        lang_text_draw_centered(
+            CUSTOM_TRANSLATION,
+            sort_translation,
+            sort_by_button[0].x,
+            sort_button_text_y,
+            sort_by_button[0].width,
+            FONT_NORMAL_BLACK
+        );
 
         // Saved game info
         if (*data.selected_file && data.type != FILE_TYPE_EMPIRE && data.type != FILE_TYPE_SCENARIO_EVENTS
@@ -430,7 +436,13 @@ static void draw_foreground(void)
     }
 
     input_box_draw(&main_input);
-    generic_button_border_draw(&sort_by_button[0], data.sort_by_button_focused);
+    button_border_draw(
+        sort_by_button[0].x,
+        sort_by_button[0].y,
+        sort_by_button[0].width,
+        sort_by_button[0].height,
+        data.sort_by_button_focused
+    );
     image_buttons_draw(0, 0, image_buttons, 2);
     scrollbar_draw(&scrollbar);
     graphics_reset_dialog();
