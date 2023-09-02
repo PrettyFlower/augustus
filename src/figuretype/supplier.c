@@ -168,7 +168,7 @@ static int change_market_supplier_destination(figure *f, int dst_building_id)
     return 1;
 }
 
-static int new_market_dest_better_than_old_market_dest(figure *f, resource_type r, resource_storage_info info[RESOURCE_MAX])
+static int is_better_destination(figure *f, resource_type r, resource_storage_info *info)
 {
     building *old_dest = building_get(f->destination_building_id);
     // if any of these are true, the new building is automatically better
@@ -182,8 +182,7 @@ static int new_market_dest_better_than_old_market_dest(figure *f, resource_type 
     // make sure the new building is less than or equal to half the distance from the old
     // building to help prevent market ladies from "ping ponging" back and forth
     int old_dest_dist = building_dist(f->x, f->y, 1, 1, old_dest);
-    int half_old_dest_dist = old_dest_dist > 0 ? old_dest_dist / 2 : 0;
-    if (info[r].min_distance <= half_old_dest_dist) {
+    if (info->min_distance <= old_dest_dist / 2) {
         return 1;
     }
     return 0;
@@ -209,7 +208,7 @@ static int recalculate_market_supplier_destination(figure *f)
     }
 
     if (info[item].building_id) {
-        if (new_market_dest_better_than_old_market_dest(f, item, info)) {
+        if (is_better_destination(f, item, &info[item])) {
             return change_market_supplier_destination(f, info[item].building_id);
         } else {
             return 1;
