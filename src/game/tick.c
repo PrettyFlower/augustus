@@ -153,7 +153,6 @@ static void advance_tick(void)
         case 7: map_road_network_update(); break;
         case 8: building_granaries_calculate_stocks(); break;
         case 9: city_buildings_update_plague(); break;
-        case 10: empire_city_generate_trader(); break;
         case 12: house_service_decay_houses_covered(); break;
         case 16: city_resource_calculate_warehouse_stocks(); break;
         case 17: city_resource_calculate_food_stocks_and_supply_wheat(); break;
