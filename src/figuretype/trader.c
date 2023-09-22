@@ -67,7 +67,7 @@ int figure_create_trade_caravan(int x, int y, int city_id)
     caravan->empire_city_id = city_id;
     caravan->action_state = FIGURE_ACTION_100_TRADE_CARAVAN_CREATED;
     random_generate_next();
-    caravan->wait_ticks = random_byte() % TRADER_INITIAL_WAIT;
+    caravan->wait_ticks = random_byte() & TRADER_INITIAL_WAIT;
     // donkey 1
     figure *donkey1 = figure_create(FIGURE_TRADE_CARAVAN_DONKEY, x, y, DIR_0_TOP);
     donkey1->action_state = FIGURE_ACTION_100_TRADE_CARAVAN_CREATED;
@@ -85,7 +85,7 @@ int figure_create_trade_ship(int x, int y, int city_id)
     ship->empire_city_id = city_id;
     ship->action_state = FIGURE_ACTION_110_TRADE_SHIP_CREATED;
     random_generate_next();
-    ship->wait_ticks = random_byte() % TRADER_INITIAL_WAIT;
+    ship->wait_ticks = random_byte() & TRADER_INITIAL_WAIT;
     return ship->id;
 }
 
